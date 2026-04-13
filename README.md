@@ -10,4 +10,4 @@
 
 ## Documentacion
 
-La documentacion de este proyecto se encuentra en la [Wiki](/-/wikis/home)
+La documentacion de este proyecto se encuentra en la [Wiki](../../wikis/home)
