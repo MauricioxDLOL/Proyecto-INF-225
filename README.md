@@ -7,3 +7,7 @@
 * Catalina Diaz - 202473507-1
 * Nicolas Matta - 201956634-2
 * Mauricio Godoy - 202304014-2
+
+## Documentacion
+
+La documentacion de este proyecto se encuentra en la [Wiki](/-/wikis/home)
