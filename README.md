@@ -1,6 +1,6 @@
 # Grupo 12
 
-**Profesora:** Luz Mairet Chourio
+**Profesora:** Luz Mairet Chourio\
 **Ayudante:** Benjamín Daza
 
 **Integrantes:**
