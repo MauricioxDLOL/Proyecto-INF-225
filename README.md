@@ -1,6 +1,9 @@
 # Grupo 12
 
-**Integrantes**
+**Profesora:** Luz Mairet Chourio
+**Ayudante:** Benjamín Daza
+
+**Integrantes:**
 
 * Pablo Gutiérrez - 202473610-8
 * Danae Ojeda - 202373516-7
