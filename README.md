@@ -11,6 +11,9 @@
 * Nicolas Matta - 201956634-2
 * Mauricio Godoy - 202304014-2
 
+##Video Hito 3
+https://usmcl-my.sharepoint.com/:v:/g/personal/cdiazc_usm_cl/IQCq1NRa5yEhS57bQFkVWNyXAfobhh_okaS_FQND0UnFB3A?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=rqUp1f
+
 ## Documentacion
 
 La documentacion de este proyecto se encuentra en la [Wiki](../../wikis/home)
