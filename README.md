@@ -11,7 +11,7 @@
 * Nicolas Matta - 201956634-2
 * Mauricio Godoy - 202304014-2
 
-##Video Hito 3
+**Video Hito 3**
 
 [Video](https://usmcl-my.sharepoint.com/:v:/g/personal/cdiazc_usm_cl/IQBAFYKKWKgwRYmjBvAY-MXfAShSjlied98U5Tgc55VyuIA?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=wOMOgU)
 
