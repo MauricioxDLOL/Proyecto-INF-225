@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const dias = Array.from({length: 31}, (_, i) => i + 1);
@@ -22,10 +23,12 @@ export default function MiCuentaFatSecret() {
     intolerancias: [],
     alimentoRestringido: "",
     alimentosRestringidos: [],
+    contrasena: "",
   });
 
   const [enviado, setEnviado] = useState(false);
   const [errores, setErrores] = useState({});
+  const navigate = useNavigate();
 
   const set = (campo, valor) => {
     setForm(prev => ({ ...prev, [campo]: valor }));
@@ -40,6 +43,8 @@ export default function MiCuentaFatSecret() {
     if (!form.usuario.trim()) e.usuario = "El nombre de usuario es obligatorio";
     if (!form.correo.trim()) e.correo = "El correo es obligatorio";
     else if (!/\S+@\S+\.\S+/.test(form.correo)) e.correo = "Correo inválido";
+    if (!form.contrasena.trim()) e.contrasena = "La contraseña es obligatoria";
+    else if (form.contrasena.length < 6) e.contrasena = "Mínimo 6 caracteres";
     return e;
   };
 
@@ -55,10 +60,21 @@ export default function MiCuentaFatSecret() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
+
       if (respuesta.ok) {
         setEnviado(true);
+        setTimeout(() => navigate("/login"), 3000);
       } else {
-        alert("Hubo un error al guardar");
+        try {
+          const data = await respuesta.json();
+          if (data.error && data.error.includes("correo")) {
+            setErrores(prev => ({ ...prev, correo: "Este correo ya está registrado" }));
+          } else if (data.error && data.error.includes("usuario")) {
+            setErrores(prev => ({ ...prev, usuario: "Este nombre de usuario ya está en uso" }));
+          }
+        } catch {
+          alert("Hubo un error al guardar");
+        }
       }
     } catch (err) {
       alert("No se pudo conectar con el servidor");
@@ -308,7 +324,25 @@ export default function MiCuentaFatSecret() {
                 {errores.correo && <ErrorMsg>{errores.correo}</ErrorMsg>}
               </div>
             </Row>
-
+            <Row label="Contraseña:">
+              <div>
+                <div style={styles.inputGroup}>
+                  <input
+                    type={form.mostrarContrasena ? "text" : "password"}
+                    value={form.contrasena}
+                    onChange={e => set("contrasena", e.target.value)}
+                    style={{ ...styles.inputWide, ...(errores.contrasena ? styles.inputError : {}) }}
+                  />
+                  <span
+                    style={styles.linkAzul}
+                    onClick={() => set("mostrarContrasena", !form.mostrarContrasena)}
+                  >
+                    {form.mostrarContrasena ? "Ocultar" : "👁 Ver"}
+                  </span>
+                </div>
+                {errores.contrasena && <ErrorMsg>{errores.contrasena}</ErrorMsg>}
+              </div>
+            </Row>
           </Section>
 
           {/* Aviso legal */}
