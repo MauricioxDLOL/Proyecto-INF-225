@@ -5,6 +5,51 @@ const port = 3000;
 
 app.use(express.json());
 
+const inicializarDB = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        sexo TEXT,
+        peso NUMERIC,
+        altura NUMERIC,
+        fecha_nacimiento TEXT,
+        actividad TEXT,
+        dieta TEXT,
+        peso_meta NUMERIC,
+        usuario TEXT UNIQUE,
+        correo TEXT UNIQUE,
+        tipo_dieta TEXT,
+        intolerancias TEXT,
+        alimentos_restringidos TEXT,
+        contrasena TEXT
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS historial_alimentos (
+        id SERIAL PRIMARY KEY,
+        usuario TEXT,
+        alimento TEXT,
+        seguro BOOLEAN,
+        mensaje TEXT,
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS tipo_dieta TEXT`);
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intolerancias TEXT`);
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS alimentos_restringidos TEXT`);
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS contrasena TEXT`);
+
+    console.log('Tablas inicializadas correctamente');
+  } catch (err) {
+    console.error('Error inicializando tablas:', err);
+  }
+};
+
+inicializarDB();
+
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:3001');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
