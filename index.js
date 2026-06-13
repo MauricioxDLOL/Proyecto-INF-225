@@ -37,6 +37,18 @@ const inicializarDB = async () => {
       )
     `);
 
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS actividad_fisica (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER REFERENCES usuarios(id),
+        tipo_actividad VARCHAR(255),
+        intensidad VARCHAR(50),
+        duracion_minutos INTEGER,
+        calorias_quemadas NUMERIC(5, 2)
+      )
+    `);
+
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS tipo_dieta TEXT`);
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intolerancias TEXT`);
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS alimentos_restringidos TEXT`);
@@ -133,7 +145,7 @@ app.post('/login', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
-    res.json({ mensaje: 'Login exitoso', usuario: result.rows[0].usuario });
+    res.json({ mensaje: 'Login exitoso', usuario: { id: result.rows[0].id, nombre: result.rows[0].usuario } });
   } catch (err) {
     console.error(err);
     res.status(500).send('Error al iniciar sesión');
@@ -217,6 +229,37 @@ app.post('/verificar-alimento', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Error al verificar');
+  }
+});
+
+app.post('/api/actividades', async (req, res) => {
+  const { usuario_id, tipo_actividad, intensidad, duracion_minutos } = req.body;
+
+  if (!tipo_actividad || !duracion_minutos) {
+    return res.status(400).json({ 
+      error: 'El tipo de actividad y la duración son obligatorios.'
+    });
+  }
+
+  try {
+    let factorIntensidad = 5; 
+    if (intensidad === 'media') factorIntensidad = 8;
+    if (intensidad === 'alta') factorIntensidad = 12;
+
+    const calorias_quemadas = duracion_minutos * factorIntensidad;
+
+    const result = await pool.query(
+      `INSERT INTO actividad_fisica (usuario_id, tipo_actividad, intensidad, duracion_minutos, calorias_quemadas)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [usuario_id, tipo_actividad, intensidad, duracion_minutos, calorias_quemadas]
+    );
+
+    res.status(201).json(result.rows[0]);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar la actividad física' });
   }
 });
 

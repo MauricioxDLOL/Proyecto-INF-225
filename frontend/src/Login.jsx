@@ -25,7 +25,7 @@ export default function Login() {
       });
       const data = await respuesta.json();
       if (respuesta.ok) {
-        localStorage.setItem("usuario", data.usuario);
+        localStorage.setItem("usuario", JSON.stringify(data.usuario));
         navigate("/");
       } else {
         setError(data.error || "Error al iniciar sesión");

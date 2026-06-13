@@ -1,11 +1,30 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./HomePage.css";
 
 function HomePage() {
   const navigate = useNavigate();
 
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [tipoActividad, setTipoActividad] = useState("");
+  const [intensidad, setIntensidad] = useState("baja");
+  const [duracion, setDuracion] = useState("");
+  const [error, setError] = useState("");
+  const [caloriasQuemadas, setCaloriasQuemadas] = useState(null);
+
+  let usuarioLocal = null;
+  try {
+    const storedUser = localStorage.getItem('usuario');
+    if (storedUser) {
+      usuarioLocal = JSON.parse(storedUser);
+    }
+  } catch (error) {
+    localStorage.removeItem('usuario'); 
+  }
+
   const usuario = {
-    nombre: "Nicolás",
+    id: usuarioLocal?.id || null,
+    nombre: usuarioLocal?.nombre || "Invitado",
     peso: 75,
     caloriasConsumidas: 324,
     metaCalorica: 2000,
@@ -18,15 +37,62 @@ function HomePage() {
   };
 
   const caloriasRestantes = usuario.metaCalorica - usuario.caloriasConsumidas;
-  const porcentajeCalorias = Math.round(
-    (usuario.caloriasConsumidas / usuario.metaCalorica) * 100
-  );
-  const porcentajeProteina = Math.round(
-    (usuario.proteina / usuario.metaproteina) * 100
-  );
-  const porcentajeCarbohidratos = Math.round(
-    (usuario.carbohidratos / usuario.metacarbohidratos) * 100
-  );
+  const porcentajeCalorias = Math.round((usuario.caloriasConsumidas / usuario.metaCalorica) * 100);
+  const porcentajeProteina = Math.round((usuario.proteina / usuario.metaproteina) * 100);
+  const porcentajeCarbohidratos = Math.round((usuario.carbohidratos / usuario.metacarbohidratos) * 100);
+
+  const handleGuardarActividad = async (e) => {
+    e.preventDefault();
+    setError("");
+    setCaloriasQuemadas(null);
+
+    if (!usuario.id) {
+      setError("Debes iniciar sesión para registrar una actividad.");
+      return;
+    }
+
+    if (!tipoActividad || !duracion) {
+      setError("Los campos Tipo de actividad y Duración son obligatorios.");
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:3000/api/actividades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usuario_id: usuario.id,
+          tipo_actividad: tipoActividad,
+          intensidad: intensidad,
+          duracion_minutos: parseInt(duracion, 10)
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al procesar la solicitud");
+      }
+
+      setCaloriasQuemadas(data.calorias_quemadas);
+
+      setTipoActividad("");
+      setDuracion("");
+      setIntensidad("baja");
+
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const cerrarPopup = () => {
+    setIsPopupOpen(false);
+    setError("");
+    setCaloriasQuemadas(null);
+    setTipoActividad("");
+    setDuracion("");
+    setIntensidad("baja");
+  };
 
   return (
     <div className="home-page">
@@ -50,6 +116,7 @@ function HomePage() {
           <button onClick={() => navigate("/agregar")}>Alimentos</button>
           <button onClick={() => navigate("/metas")}>Metas</button>
           <button onClick={() => navigate("/perfil")}>Perfil</button>
+          <button onClick={() => setIsPopupOpen(true)}>Actividad</button>
         </div>
       </header>
 
@@ -132,6 +199,56 @@ function HomePage() {
           <button>Quiénes somos</button>
         </section>
       </main>
+      {isPopupOpen && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <h2>Registrar Actividad Física</h2>
+            <button className="close-btn" onClick={cerrarPopup}>X</button>
+
+            <form onSubmit={handleGuardarActividad} className="actividad-form">
+              <div className="form-group">
+                <label>Tipo de Actividad *</label>
+                <input 
+                  type="text"
+                  value={tipoActividad}
+                  onChange={(e) => setTipoActividad(e.target.value)}
+                  placeholder="Ej. Correr, Ciclismo, Pesas"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Intensidad</label>
+                <select value={intensidad} onChange={(e) => setIntensidad(e.target.value)}>
+                  <option value="baja">Baja</option>
+                  <option value="media">Media</option>
+                  <option value="alta">Alta</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Duración (minutos) *</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={duracion}
+                  onChange={(e) => setDuracion(e.target.value)}
+                  placeholder="Ej. 30"
+                />
+              </div>
+
+              {error && <div className="error-message">{error}</div>}
+
+              {caloriasQuemadas !== null && (
+                <div className="success-message">
+                  ¡Registro exitoso! Has quemado <strong>{caloriasQuemadas} calorías</strong>.
+                </div>
+              )}
+
+              <button type="submit" className="submit-btn">Guardar Actividad</button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
