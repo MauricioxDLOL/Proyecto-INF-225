@@ -5,6 +5,63 @@ const port = 3000;
 
 app.use(express.json());
 
+const inicializarDB = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        sexo TEXT,
+        peso NUMERIC,
+        altura NUMERIC,
+        fecha_nacimiento TEXT,
+        actividad TEXT,
+        dieta TEXT,
+        peso_meta NUMERIC,
+        usuario TEXT UNIQUE,
+        correo TEXT UNIQUE,
+        tipo_dieta TEXT,
+        intolerancias TEXT,
+        alimentos_restringidos TEXT,
+        contrasena TEXT
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS historial_alimentos (
+        id SERIAL PRIMARY KEY,
+        usuario TEXT,
+        alimento TEXT,
+        seguro BOOLEAN,
+        mensaje TEXT,
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS actividad_fisica (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER REFERENCES usuarios(id),
+        tipo_actividad VARCHAR(255),
+        intensidad VARCHAR(50),
+        duracion_minutos INTEGER,
+        calorias_quemadas NUMERIC(5, 2)
+      )
+    `);
+
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS tipo_dieta TEXT`);
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intolerancias TEXT`);
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS alimentos_restringidos TEXT`);
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS contrasena TEXT`);
+
+    console.log('Tablas inicializadas correctamente');
+  } catch (err) {
+    console.error('Error inicializando tablas:', err);
+  }
+};
+
+inicializarDB();
+
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:3001');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
@@ -92,7 +149,7 @@ app.post('/login', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
     }
-    res.json({ mensaje: 'Login exitoso', usuario: result.rows[0].usuario });
+    res.json({ mensaje: 'Login exitoso', usuario: { id: result.rows[0].id, nombre: result.rows[0].usuario } });
   } catch (err) {
     console.error(err);
     res.status(500).send('Error al iniciar sesión');
@@ -176,6 +233,37 @@ app.post('/verificar-alimento', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Error al verificar');
+  }
+});
+
+app.post('/api/actividades', async (req, res) => {
+  const { usuario_id, tipo_actividad, intensidad, duracion_minutos } = req.body;
+
+  if (!tipo_actividad || !duracion_minutos) {
+    return res.status(400).json({ 
+      error: 'El tipo de actividad y la duración son obligatorios.'
+    });
+  }
+
+  try {
+    let factorIntensidad = 5; 
+    if (intensidad === 'media') factorIntensidad = 8;
+    if (intensidad === 'alta') factorIntensidad = 12;
+
+    const calorias_quemadas = duracion_minutos * factorIntensidad;
+
+    const result = await pool.query(
+      `INSERT INTO actividad_fisica (usuario_id, tipo_actividad, intensidad, duracion_minutos, calorias_quemadas)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [usuario_id, tipo_actividad, intensidad, duracion_minutos, calorias_quemadas]
+    );
+
+    res.status(201).json(result.rows[0]);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al guardar la actividad física' });
   }
 });
 
