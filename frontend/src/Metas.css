@@ -1,0 +1,25 @@
+.metas-page {
+  padding: 40px;
+}
+
+.form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  max-width: 400px;
+
+  padding: 20px;
+
+  border-radius: 12px;
+
+  box-shadow: 0 0 10px rgba(0,0,0,.1);
+}
+
+input {
+  padding: 10px;
+}
+
+button {
+  padding: 12px;
+}

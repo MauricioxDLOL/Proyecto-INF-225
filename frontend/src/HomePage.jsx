@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./HomePage.css";
 
 function HomePage() {
   const navigate = useNavigate();
 
+  // Estados para el Popup de Actividad
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [tipoActividad, setTipoActividad] = useState("");
   const [intensidad, setIntensidad] = useState("baja");
@@ -12,35 +13,112 @@ function HomePage() {
   const [error, setError] = useState("");
   const [caloriasQuemadas, setCaloriasQuemadas] = useState(null);
 
+  // Estados para los datos dinámicos
+  const [metas, setMetas] = useState({});
+  const [datosUsuario, setDatosUsuario] = useState({});
+  const [resumenDiario, setResumenDiario] = useState({});
+
+  // Manejo de usuario en localStorage (Solo JSON)
   let usuarioLocal = null;
+  let userIdParaFetch = null;
+  
   try {
     const storedUser = localStorage.getItem('usuario');
     if (storedUser) {
       usuarioLocal = JSON.parse(storedUser);
+      userIdParaFetch = usuarioLocal.id; 
     }
   } catch (error) {
     localStorage.removeItem('usuario'); 
   }
 
+  // Cargar Metas
+  useEffect(() => {
+    async function cargarMetas() {
+      if (!userIdParaFetch) return;
+      try {
+        const res = await fetch(`http://localhost:3000/metas/${userIdParaFetch}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setMetas(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    cargarMetas();
+  }, [userIdParaFetch]);
+
+  useEffect(() => {
+    async function cargarUsuario() {
+      if (!userIdParaFetch) return;
+      try {
+        const res = await fetch(`http://localhost:3000/usuario/${userIdParaFetch}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setDatosUsuario(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    cargarUsuario();
+  }, [userIdParaFetch]);
+
+  // Cargar Resumen Diario
+  useEffect(() => {
+    async function cargarResumenDiario() {
+      if (!userIdParaFetch) return;
+      try {
+        const res = await fetch(`http://localhost:3000/resumen-diario/${userIdParaFetch}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setResumenDiario(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    cargarResumenDiario();
+  }, [userIdParaFetch]);
+
+  // Consolidación del objeto usuario
   const usuario = {
     id: usuarioLocal?.id || null,
-    nombre: usuarioLocal?.nombre || "Invitado",
-    peso: 75,
-    caloriasConsumidas: 324,
-    metaCalorica: 2000,
-    proteina: 32,
-    metaproteina: 150,
-    carbohidratos: 28,
-    metacarbohidratos: 250,
-    grasa: 8,
-    racha: 7,
+    nombre: datosUsuario.usuario || usuarioLocal?.nombre || "Invitado",
+    peso: datosUsuario.peso || "-",
+    pesoMeta: datosUsuario.peso_meta || "-",
+
+    caloriasConsumidas: Number(resumenDiario.calorias_consumidas) || 0,
+    proteina: Number(resumenDiario.proteina) || 0,
+    carbohidratos: Number(resumenDiario.carbohidratos) || 0,
+    grasa: Number(resumenDiario.grasa) || 0,
+    aguaConsumida: Number(resumenDiario.agua_consumida) || 0,
+
+    metaCalorica: Number(metas.calorias) || null,
+    metaproteina: Number(metas.proteina) || null,
+    metacarbohidratos: Number(metas.carbohidratos) || null,
+    metaGrasa: Number(metas.grasa) || null,
+    metaAgua: Number(metas.agua) || null,
+
+    racha: Number(resumenDiario.racha) || 0,
   };
 
-  const caloriasRestantes = usuario.metaCalorica - usuario.caloriasConsumidas;
-  const porcentajeCalorias = Math.round((usuario.caloriasConsumidas / usuario.metaCalorica) * 100);
-  const porcentajeProteina = Math.round((usuario.proteina / usuario.metaproteina) * 100);
-  const porcentajeCarbohidratos = Math.round((usuario.carbohidratos / usuario.metacarbohidratos) * 100);
+  // Cálculos de progreso
+  const tieneMetas = usuario.metaCalorica || usuario.metaproteina || usuario.metacarbohidratos || usuario.metaAgua;
+  const caloriasRestantes = usuario.metaCalorica ? usuario.metaCalorica - usuario.caloriasConsumidas : "-";
 
+  const porcentajeCalorias = usuario.metaCalorica ? Math.min(100, Math.round((usuario.caloriasConsumidas / usuario.metaCalorica) * 100)) : 0;
+  const porcentajeProteina = usuario.metaproteina ? Math.min(100, Math.round((usuario.proteina / usuario.metaproteina) * 100)) : 0;
+  const porcentajeCarbohidratos = usuario.metacarbohidratos ? Math.min(100, Math.round((usuario.carbohidratos / usuario.metacarbohidratos) * 100)) : 0;
+  const porcentajeAgua = usuario.metaAgua ? Math.min(100, Math.round((usuario.aguaConsumida / usuario.metaAgua) * 100)) : 0;
+
+  // Alertas de metas completadas
+  useEffect(() => {
+    if (porcentajeCalorias >= 100) alert("¡Meta de calorías completada!");
+    if (porcentajeProteina >= 100) alert("¡Meta de proteínas completada!");
+    if (porcentajeCarbohidratos >= 100) alert("¡Meta de carbohidratos completada!");
+    if (porcentajeAgua >= 100) alert("¡Meta de agua completada!");
+  }, [porcentajeCalorias, porcentajeProteina, porcentajeCarbohidratos, porcentajeAgua]);
+
+  // Manejadores del Popup de Actividad
   const handleGuardarActividad = async (e) => {
     e.preventDefault();
     setError("");
@@ -75,7 +153,6 @@ function HomePage() {
       }
 
       setCaloriasQuemadas(data.calorias_quemadas);
-
       setTipoActividad("");
       setDuracion("");
       setIntensidad("baja");
@@ -145,44 +222,70 @@ function HomePage() {
           </div>
         </section>
 
-        <section className="progress-card">
-          <h2>Progreso diario</h2>
-          <div className="chart-container">
-            <div className="chart-item">
-              <div className="progress-circle">
-                <span>{porcentajeCalorias}%</span>
-              </div>
-              <p>Calorías consumidas: {usuario.caloriasConsumidas}</p>
+        {tieneMetas && (
+          <section className="progress-card">
+            <h2>Progreso diario</h2>
+            <div className="chart-container">
+              {usuario.metaCalorica && (
+                <div className="chart-item">
+                  <div
+                    className="progress-circle"
+                    style={{ background: `conic-gradient(#2db84d 0% ${porcentajeCalorias}%, #e5e5e5 ${porcentajeCalorias}% 100%)` }}
+                  >
+                    <span>{porcentajeCalorias}%</span>
+                  </div>
+                  <p>Calorías consumidas: {usuario.caloriasConsumidas}</p>
+                </div>
+              )}
+              {usuario.metaproteina && (
+                <div className="chart-item">
+                  <div
+                    className="progress-circle"
+                    style={{ background: `conic-gradient(#2db84d 0% ${porcentajeProteina}%, #e5e5e5 ${porcentajeProteina}% 100%)` }}
+                  >
+                    <span>{porcentajeProteina}%</span>
+                  </div>
+                  <p>Proteínas consumidas: {usuario.proteina}</p>
+                </div>
+              )}
+              {usuario.metacarbohidratos && (
+                <div className="chart-item">
+                  <div
+                    className="progress-circle"
+                    style={{ background: `conic-gradient(#2db84d 0% ${porcentajeCarbohidratos}%, #e5e5e5 ${porcentajeCarbohidratos}% 100%)` }}
+                  >
+                    <span>{porcentajeCarbohidratos}%</span>
+                  </div>
+                  <p>Carbohidratos consumidos: {usuario.carbohidratos}</p>
+                </div>
+              )}
+              {usuario.metaAgua && (
+                <div className="chart-item">
+                  <div
+                    className="progress-circle"
+                    style={{ background: `conic-gradient(#2db84d 0% ${porcentajeAgua}%, #e5e5e5 ${porcentajeAgua}% 100%)` }}
+                  >
+                    <span>{porcentajeAgua}%</span>
+                  </div>
+                  <p>Agua consumida: {usuario.aguaConsumida}</p>
+                </div>
+              )}
             </div>
-            <div className="chart-item">
-              <div className="progress-circle">
-                <span>{porcentajeProteina}%</span>
-              </div>
-              <p>Proteínas consumidas: {usuario.proteina}</p>
-            </div>
-            <div className="chart-item">
-              <div className="progress-circle">
-                <span>{porcentajeCarbohidratos}%</span>
-              </div>
-              <p>Carbohidratos consumidos: {usuario.carbohidratos}</p>
-            </div>
-          </div>
 
-          <p>
-            Has consumido {usuario.caloriasConsumidas} de {usuario.metaCalorica} kcal.
-          </p>
+            <p>Has consumido {usuario.caloriasConsumidas} de {usuario.metaCalorica} kcal.</p>
 
-          <div className="macros">
-            <span>Proteína: {usuario.proteina} g</span>
-            <span>Carbohidratos: {usuario.carbohidratos} g</span>
-            <span>Grasa: {usuario.grasa} g</span>
-          </div>
-        </section>
+            <div className="macros">
+              <span>Proteína: {usuario.proteina} g</span>
+              <span>Carbohidratos: {usuario.carbohidratos} g</span>
+              <span>Grasa: {usuario.grasa} g</span>
+            </div>
+          </section>
+        )}
 
         <section className="achievements-card">
           <h2>Logros:</h2>
           <div className="achievements-list">
-            {caloriasRestantes <= 0 && (
+            {caloriasRestantes !== "-" && caloriasRestantes <= 0 && (
               <div className="achievement-item">
                 <p>Has alcanzado tu meta de calorías hoy.</p>
               </div>
@@ -199,6 +302,7 @@ function HomePage() {
           <button>Quiénes somos</button>
         </section>
       </main>
+
       {isPopupOpen && (
         <div className="popup-overlay">
           <div className="popup-content">

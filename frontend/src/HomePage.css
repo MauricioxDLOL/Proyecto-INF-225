@@ -42,13 +42,13 @@
 
   font-weight: bold;
 
-  color: #2db84d;
+  color: white;
 
   cursor: pointer;
 }
 
 .main-nav button:hover {
-  color: #2db84d;
+  color: #eef5ec;
 }
 
 .home-header h1 {
