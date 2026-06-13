@@ -8,7 +8,11 @@ app.use(express.json());
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:3001');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.header('Access-Control-Allow-Methods', 'GET, POST');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE');
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
   next();
 });
 
@@ -193,6 +197,132 @@ app.post('/guardar-alimento', async (req, res) => {
     res.status(500).send('Error al guardar');
   }
 });
+
+// Comunidad - Crear publicación
+app.post('/publicaciones', async (req, res) => {
+  const { titulo, texto, usuario } = req.body;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS publicaciones (
+        id SERIAL PRIMARY KEY,
+        titulo TEXT NOT NULL,
+        texto TEXT NOT NULL,
+        fecha_creacion TIMESTAMP DEFAULT NOW(),
+        likes INTEGER DEFAULT 0,
+        usuario_id INTEGER REFERENCES usuarios(id)
+      )
+    `);
+
+    const usuarioResult = await pool.query(
+      'SELECT id FROM usuarios WHERE usuario = $1',
+      [usuario]
+    );
+    const usuario_id = usuarioResult.rows[0].id;
+
+    await pool.query(
+      `INSERT INTO publicaciones (titulo, texto, usuario_id) VALUES ($1, $2, $3)`,
+      [titulo, texto, usuario_id]
+    );
+
+    res.json({ mensaje: 'Publicación creada correctamente' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al crear publicación');
+  }
+});
+
+// Comunidad - Obtener todas las publicaciones
+app.get('/publicaciones', async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.*, u.usuario FROM publicaciones p
+       JOIN usuarios u ON p.usuario_id = u.id
+       ORDER BY p.fecha_creacion DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al obtener publicaciones');
+  }
+});
+
+
+//Comunidad - Eliminar publicación
+app.delete('/publicaciones/:id', async (req, res) => {
+  const { id } = req.params;
+  const { usuario } = req.body;
+  try {
+    // Verificar que la publicación pertenece al usuario
+    const pub = await pool.query(
+      `SELECT p.id FROM publicaciones p
+       JOIN usuarios u ON p.usuario_id = u.id
+       WHERE p.id = $1 AND u.usuario = $2`,
+      [id, usuario]
+    );
+    if (pub.rows.length === 0) {
+      return res.status(403).json({ error: 'No tienes permiso para eliminar esta publicación' });
+    }
+    // Eliminar comentarios primero (por la clave foránea)
+    await pool.query('DELETE FROM comentarios WHERE publicacion_id = $1', [id]);
+    await pool.query('DELETE FROM publicaciones WHERE id = $1', [id]);
+    res.json({ mensaje: 'Publicación eliminada' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al eliminar');
+  }
+});
+
+// Comunidad - Crear comentario
+app.post('/comentarios', async (req, res) => {
+  const { texto, publicacion_id, usuario } = req.body;
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS comentarios (
+        id SERIAL PRIMARY KEY,
+        texto TEXT NOT NULL,
+        fecha_publicacion TIMESTAMP DEFAULT NOW(),
+        publicacion_id INTEGER REFERENCES publicaciones(id),
+        usuario_id INTEGER REFERENCES usuarios(id)
+      )
+    `);
+
+    const usuarioResult = await pool.query(
+      'SELECT id FROM usuarios WHERE usuario = $1',
+      [usuario]
+    );
+    const usuario_id = usuarioResult.rows[0].id;
+
+    await pool.query(
+      `INSERT INTO comentarios (texto, publicacion_id, usuario_id) VALUES ($1, $2, $3)`,
+      [texto, publicacion_id, usuario_id]
+    );
+
+    res.json({ mensaje: 'Comentario agregado correctamente' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al agregar comentario');
+  }
+});
+
+// Comunidad - Obtener comentarios de una publicación
+app.get('/comentarios/:publicacion_id', async (req, res) => {
+  const { publicacion_id } = req.params;
+  try {
+    const result = await pool.query(
+      `SELECT c.*, u.usuario FROM comentarios c
+       JOIN usuarios u ON c.usuario_id = u.id
+       WHERE c.publicacion_id = $1
+       ORDER BY c.fecha_publicacion ASC`,
+      [publicacion_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error al obtener comentarios');
+  }
+});
+
+
 
 app.listen(port, () => {
   console.log(`App corriendo en http://localhost:${port}`);
