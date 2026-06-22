@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import "./Comunidad.css";
 
 export default function Comunidad() {
@@ -16,8 +15,6 @@ export default function Comunidad() {
   const [textoComentario, setTextoComentario] = useState("");
   const [cargandoComentarios, setCargandoComentarios] = useState(false);
   const [enviandoComentario, setEnviandoComentario] = useState(false);
-
-  const navigate = useNavigate();
 
   let usuario = null;
   try {
@@ -143,43 +140,8 @@ export default function Comunidad() {
     });
   };
 
-  const cerrarSesion = () => {
-    localStorage.removeItem("usuario");
-    navigate("/");
-  };
-
   return (
     <div className="page">
-      <header className="header">
-        <div className="topBar">
-          <h1 className="logo">Fatsecret</h1>
-          <div className="searchBar">
-            <input type="text" placeholder="Buscar alimentos..." className="searchInput" />
-            <button className="searchBtn">🔍</button>
-          </div>
-          <nav className="userNav">
-            {usuario ? (
-              <>
-                <span className="bienvenida">Hola, {usuario.nombre} 👋</span>
-                <button className="navBtn" onClick={cerrarSesion}>Cerrar sesión</button>
-              </>
-            ) : (
-              <>
-                <button className="navBtn" onClick={() => navigate("/login")}>Iniciar sesión</button>
-                <button className="navBtn" onClick={() => navigate("/registro")}>Registrarse</button>
-              </>
-            )}
-          </nav>
-        </div>
-        <div className="mainNav">
-          <button className="mainNavBtn" onClick={() => navigate("/")}>Inicio</button>
-          <button className="mainNavBtn mainNavBtnActive">Comunidad</button>
-          <button className="mainNavBtn" onClick={() => navigate("/agregar")}>Alimentos</button>
-          <button className="mainNavBtn" onClick={() => navigate("/metas")}>Metas</button>
-          <button className="mainNavBtn" onClick={() => navigate("/perfil")}>Perfil</button>
-        </div>
-      </header>
-
       <main className="main">
         {usuario && (
           <div className="card">

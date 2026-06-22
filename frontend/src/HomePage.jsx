@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import "./HomePage.css";
 
 function HomePage() {
-  const navigate = useNavigate();
 
   // Estados para el Popup de Actividad
   const [isPopupOpen, setIsPopupOpen] = useState(false);
@@ -29,7 +27,7 @@ function HomePage() {
       userIdParaFetch = usuarioLocal.id; 
     }
   } catch (error) {
-    localStorage.removeItem('usuario'); 
+    localStorage.removeItem('usuario');
   }
 
   // Cargar Metas
@@ -173,34 +171,15 @@ function HomePage() {
 
   return (
     <div className="home-page">
-      <header className="home-header">
-        <div className="top-bar">
-          <h1>Fatsecret</h1>
-
-          <div className="search-bar">
-            <input type="text" placeholder="Buscar alimentos..." />
-            <button>🔍</button>
-          </div>
-
-          <nav className="user-nav">
-            <button onClick={() => navigate("/login")}>Iniciar sesión</button>
-            <button onClick={() => navigate("/registro")}>Registrarse</button>
-          </nav>
-        </div>
-
-        <div className="main-nav">
-          <button onClick={() => navigate("/comunidad")}>Comunidad</button>
-          <button onClick={() => navigate("/agregar")}>Alimentos</button>
-          <button onClick={() => navigate("/metas")}>Metas</button>
-          <button onClick={() => navigate("/perfil")}>Perfil</button>
-          <button onClick={() => setIsPopupOpen(true)}>Actividad</button>
-        </div>
-      </header>
-
       <main className="home-container">
         <section className="welcome-card">
-          <h2>Hola, {usuario.nombre}</h2>
-          <p>Resumen de tu alimentación de hoy</p>
+          <div>
+            <h2>Hola, {usuario.nombre}</h2>
+            <p>Resumen de tu alimentación de hoy</p>
+          </div>
+          <button className="btn-registrar" onClick={() => setIsPopupOpen(true)}>
+            🏃‍♂️ Registrar Actividad
+          </button>
         </section>
 
         <section className="summary-grid">
@@ -216,7 +195,7 @@ function HomePage() {
             <h3>Calorías restantes</h3>
             <p>{caloriasRestantes} kcal</p>
           </div>
-          <div className="summary-card">
+          <div className="summary-card racha-card">
             <h3>Racha actual</h3>
             <p>{usuario.racha} días</p>
           </div>
@@ -311,7 +290,7 @@ function HomePage() {
 
             <form onSubmit={handleGuardarActividad} className="actividad-form">
               <div className="form-group">
-                <label>Tipo de Actividad *</label>
+                <label>Tipo de Actividad <span className="required-asterisk">*</span></label>
                 <input 
                   type="text"
                   value={tipoActividad}
@@ -330,7 +309,7 @@ function HomePage() {
               </div>
 
               <div className="form-group">
-                <label>Duración (minutos) *</label>
+                <label>Duración (minutos) <span className="required-asterisk">*</span></label>
                 <input
                   type="number"
                   min="1"

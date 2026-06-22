@@ -26,7 +26,7 @@ export default function Login() {
       const data = await respuesta.json();
       if (respuesta.ok) {
         localStorage.setItem("usuario", JSON.stringify(data.usuario));
-        navigate("/");
+        window.location.href = "/";
       } else {
         setError(data.error || "Error al iniciar sesión");
       }

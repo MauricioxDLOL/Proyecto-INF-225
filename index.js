@@ -44,7 +44,7 @@ const inicializarDB = async () => {
         tipo_actividad VARCHAR(255),
         intensidad VARCHAR(50),
         duracion_minutos INTEGER,
-        calorias_quemadas NUMERIC(5, 2)
+        calorias_quemadas NUMERIC(8, 2)
       )
     `);
 

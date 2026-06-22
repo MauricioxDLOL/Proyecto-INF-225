@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Navbar from "./Navbar";
 import HomePage from "./HomePage";
 import MiCuentaFatSecret from "./MiCuentaFatSecret";
 import VerificarAlimento from "./VerificarAlimento";
@@ -9,6 +10,7 @@ import Comunidad from "./Comunidad";
 function App() {
   return (
     <BrowserRouter>
+    <Navbar />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<Login />} />
