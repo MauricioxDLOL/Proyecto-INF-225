@@ -5,7 +5,7 @@ const pool = require('./db');
 const app = express();
 const port = 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 const inicializarDB = async () => {
   try {
@@ -75,7 +75,7 @@ const inicializarDB = async () => {
       )
     `);
 
-    // Tablas de Comunidad
+   
     await pool.query(`
       CREATE TABLE IF NOT EXISTS publicaciones (
         id SERIAL PRIMARY KEY,
@@ -86,6 +86,8 @@ const inicializarDB = async () => {
         usuario_id INTEGER REFERENCES usuarios(id)
       )
     `);
+
+    await pool.query(`ALTER TABLE publicaciones ADD COLUMN IF NOT EXISTS imagen TEXT`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS comentarios (
@@ -121,7 +123,7 @@ inicializarDB();
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', 'http://localhost:3001');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, PUT');
 
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
@@ -156,6 +158,7 @@ app.post('/registro', async (req, res) => {
       const campo = existente.rows[0].correo === correo ? 'correo' : 'usuario';
       return res.status(400).json({ error: `El ${campo} ya está registrado` });
     }
+
     await pool.query(
       `INSERT INTO usuarios (sexo, peso, altura, fecha_nacimiento, actividad, dieta, peso_meta, usuario, correo, tipo_dieta, intolerancias, alimentos_restringidos, contrasena)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
@@ -166,8 +169,47 @@ app.post('/registro', async (req, res) => {
       VALUES ($1, $2)`,
       [usuario, peso]
     );
+
+    
+    const edad = new Date().getFullYear() - parseInt(anio, 10);
+    const pesoNum = parseFloat(peso);
+    const alturaNum = parseFloat(altura);
+
+    let bmr;
+    if (sexo === "masculino") {
+      bmr = (10 * pesoNum) + (6.25 * alturaNum) - (5 * edad) + 5;
+    } else {
+      bmr = (10 * pesoNum) + (6.25 * alturaNum) - (5 * edad) - 161;
+    }
+
+    
+    const factores = {
+      sedentario: 1.2,
+      baja: 1.375,
+      activo: 1.55,
+      muy_activo: 1.725,
+    };
+    const factor = factores[actividad] || 1.2;
+    let calorias = bmr * factor;
+
+   
+    if (dieta === "Pérdida de peso leve") calorias -= 300;
+    else if (dieta === "Pérdida de peso") calorias -= 500;
+    else if (dieta === "Pérdida de peso intensa") calorias -= 750;
+    else if (dieta === "Ganar peso") calorias += 400;
+    
+
+    calorias = Math.round(calorias);
+
+    
+    await pool.query(`
+      INSERT INTO metas (usuario, calorias) VALUES ($1, $2)
+      ON CONFLICT (usuario) DO UPDATE SET calorias = $2
+    `, [usuario, calorias]);
+
     res.json({ mensaje: 'Usuario guardado correctamente' });
   } catch (err) {
+    console.error(err);
     res.status(500).send('Error al guardar');
   }
 });
@@ -198,7 +240,7 @@ app.get('/usuario/:id', async (req, res) => {
 });
 
 app.post('/verificar-alimento', async (req, res) => {
-  // Lógica de verificación... (Mantenida intacta)
+  
   const { usuario, alimento } = req.body;
   const categorias = {
     "Lactosa": ["leche", "queso", "mantequilla", "yogur", "crema", "helado", "butter", "nata", "suero"],
@@ -316,15 +358,19 @@ app.get('/metas/:id', async (req, res) => {
 });
 
 app.post('/publicaciones', async (req, res) => {
-  const { titulo, texto, usuario } = req.body;
+  const { titulo, texto, usuario, imagen } = req.body;
   try {
     const usuarioResult = await pool.query('SELECT id FROM usuarios WHERE usuario = $1', [usuario]);
-    await pool.query(`INSERT INTO publicaciones (titulo, texto, usuario_id) VALUES ($1, $2, $3)`, [titulo, texto, usuarioResult.rows[0].id]);
+    await pool.query(
+      `INSERT INTO publicaciones (titulo, texto, usuario_id, imagen) VALUES ($1, $2, $3, $4)`,
+      [titulo, texto, usuarioResult.rows[0].id, imagen || null]
+    );
     res.json({ mensaje: 'Publicación creada correctamente' });
   } catch (err) {
     res.status(500).send('Error al crear publicación');
   }
 });
+
 
 app.get('/publicaciones', async (req, res) => {
   try {
@@ -349,6 +395,25 @@ app.delete('/publicaciones/:id', async (req, res) => {
   }
 });
 
+app.put('/publicaciones/:id', async (req, res) => {
+  const { id } = req.params;
+  const { titulo, texto, usuario, imagen } = req.body;
+  try {
+    const pub = await pool.query(
+      `SELECT p.id FROM publicaciones p JOIN usuarios u ON p.usuario_id = u.id WHERE p.id = $1 AND u.usuario = $2`,
+      [id, usuario]
+    );
+    if (pub.rows.length === 0) return res.status(403).json({ error: 'No tienes permiso para editar esta publicación' });
+    await pool.query(
+      'UPDATE publicaciones SET titulo = $1, texto = $2, imagen = $3 WHERE id = $4',
+      [titulo, texto, imagen || null, id]
+    );
+    res.json({ mensaje: 'Publicación actualizada' });
+  } catch (err) {
+    res.status(500).send('Error al actualizar');
+  }
+});
+
 app.post('/comentarios', async (req, res) => {
   const { texto, publicacion_id, usuario } = req.body;
   try {
@@ -366,6 +431,22 @@ app.get('/comentarios/:publicacion_id', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     res.status(500).send('Error al obtener comentarios');
+  }
+});
+
+app.delete('/comentarios/:id', async (req, res) => {
+  const { id } = req.params;
+  const { usuario } = req.body;
+  try {
+    const com = await pool.query(
+      `SELECT c.id FROM comentarios c JOIN usuarios u ON c.usuario_id = u.id WHERE c.id = $1 AND u.usuario = $2`,
+      [id, usuario]
+    );
+    if (com.rows.length === 0) return res.status(403).json({ error: 'No tienes permiso para eliminar este comentario' });
+    await pool.query('DELETE FROM comentarios WHERE id = $1', [id]);
+    res.json({ mensaje: 'Comentario eliminado' });
+  } catch (err) {
+    res.status(500).send('Error al eliminar comentario');
   }
 });
 
@@ -419,7 +500,6 @@ app.get("/buscar-alimentos", async (req, res) => {
     );
     const infoAlimento = await respuestaSpoon.json();
 
-    // 🚨 ESTE LOG ES EL CLAVE: Nos mostrará en la terminal de la computadora todo el objeto original
     console.log("📦 [Backend] Respuesta cruda de Spoonacular:", JSON.stringify(infoAlimento.nutrition?.nutrients, null, 2));
 
     if (!infoAlimento || infoAlimento.status === "failure") {
@@ -433,7 +513,6 @@ app.get("/buscar-alimentos", async (req, res) => {
       return encontrado ? encontrado.amount : 0;
     };
 
-    // Corregimos posibles variantes de nombres que usa la API
     const calorias = buscarNutriente("Calories");
     const proteinas = buscarNutriente("Protein");
     const carbohidratos = buscarNutriente("Carbohydrates") || buscarNutriente("Carbohydrates (by difference)");
@@ -544,7 +623,6 @@ app.get('/peso/:usuario', async (req, res) => {
 });
 
 app.post("/agregar-alimento-diario", async (req, res) => {
-  // ✅ AQUÍ SÍ: Imprime lo que llega desde React en los logs de tu terminal/Docker
   console.log("📦 Datos recibidos en el Backend:", req.body);
 
   const {

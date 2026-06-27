@@ -5,9 +5,16 @@ export default function Comunidad() {
   const [publicaciones, setPublicaciones] = useState([]);
   const [titulo, setTitulo] = useState("");
   const [texto, setTexto] = useState("");
+  const [imagen, setImagen] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [publicando, setPublicando] = useState(false);
+
+  // Edición
+  const [editando, setEditando] = useState(null);
+  const [tituloEdit, setTituloEdit] = useState("");
+  const [textoEdit, setTextoEdit] = useState("");
+  const [imagenEdit, setImagenEdit] = useState(null);
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [publicacionSeleccionada, setPublicacionSeleccionada] = useState(null);
@@ -30,6 +37,27 @@ export default function Comunidad() {
     cargarPublicaciones();
   }, []);
 
+  // Convierte un archivo de imagen a base64
+  const archivoABase64 = (archivo) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(archivo);
+    });
+  };
+
+  const manejarImagen = async (e, setter) => {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+    if (archivo.size > 2 * 1024 * 1024) {
+      setError("La imagen es muy grande (máximo 2MB).");
+      return;
+    }
+    const base64 = await archivoABase64(archivo);
+    setter(base64);
+  };
+
   const cargarPublicaciones = async () => {
     setCargando(true);
     try {
@@ -37,7 +65,6 @@ export default function Comunidad() {
       const data = await respuesta.json();
       if (respuesta.ok) setPublicaciones(data);
     } catch {
-      setError("No se pudo conectar con el servidor");
     } finally {
       setCargando(false);
     }
@@ -54,12 +81,13 @@ export default function Comunidad() {
       const respuesta = await fetch("http://localhost:3000/publicaciones", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulo, texto, usuario: usuario.nombre }),
+        body: JSON.stringify({ titulo, texto, usuario: usuario.nombre, imagen }),
       });
       const data = await respuesta.json();
       if (respuesta.ok) {
         setTitulo("");
         setTexto("");
+        setImagen(null);
         cargarPublicaciones();
       } else {
         setError(data.error || "Error al publicar");
@@ -71,15 +99,47 @@ export default function Comunidad() {
     }
   };
 
+  const iniciarEdicion = (pub) => {
+    setEditando(pub.id);
+    setTituloEdit(pub.titulo);
+    setTextoEdit(pub.texto);
+    setImagenEdit(pub.imagen || null);
+  };
+
+  const cancelarEdicion = () => {
+    setEditando(null);
+    setTituloEdit("");
+    setTextoEdit("");
+    setImagenEdit(null);
+  };
+
+  const guardarEdicion = async (id) => {
+    try {
+      await fetch(`http://localhost:3000/publicaciones/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: tituloEdit,
+          texto: textoEdit,
+          usuario: usuario.nombre,
+          imagen: imagenEdit,
+        }),
+      });
+      cancelarEdicion();
+      cargarPublicaciones();
+    } catch {
+    }
+  };
+
   const eliminarPublicacion = async (id) => {
     if (!window.confirm("¿Estás seguro de que quieres eliminar esta publicación?")) return;
     try {
-        await fetch(`http://localhost:3000/publicaciones/${id}`, {
+      await fetch(`http://localhost:3000/publicaciones/${id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuario: usuario.nombre }),
-        });
-        cargarPublicaciones();
+      });
+      cargarPublicaciones();
     } catch {
     }
   };
@@ -132,6 +192,22 @@ export default function Comunidad() {
     }
   };
 
+
+  const eliminarComentario = async (id) => {
+  if (!window.confirm("¿Eliminar este comentario?")) return;
+  try {
+    await fetch(`http://localhost:3000/comentarios/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usuario: usuario.nombre }),
+    });
+    const resp = await fetch(`http://localhost:3000/comentarios/${publicacionSeleccionada.id}`);
+    const data = await resp.json();
+    if (resp.ok) setComentarios(data);
+  } catch {
+  }
+};
+
   const formatearFecha = (fechaStr) => {
     const fecha = new Date(fechaStr);
     return fecha.toLocaleDateString("es-CL", {
@@ -141,69 +217,138 @@ export default function Comunidad() {
   };
 
   return (
-    <div className="page">
-      <main className="main">
+    <div className="com-page">
+      <main className="com-main">
         {usuario && (
-          <div className="card">
-            <h2 className="cardTitle">Nueva publicación</h2>
-            <div className="divider" />
-            <div className="cardBody">
-              <div className="campo">
-                <label className="label">Título:</label>
+          <div className="com-card">
+            <h2 className="com-cardTitle">Nueva publicación</h2>
+            <div className="com-divider" />
+            <div className="com-cardBody">
+              <div className="com-campo">
+                <label className="com-label">Título:</label>
                 <input
                   type="text"
                   value={titulo}
                   onChange={e => setTitulo(e.target.value)}
                   placeholder="Escribe un título..."
-                  className="input"
+                  className="com-input"
                 />
               </div>
-              <div className="campo">
-                <label className="label">Texto:</label>
+              <div className="com-campo">
+                <label className="com-label">Texto:</label>
                 <textarea
                   value={texto}
                   onChange={e => setTexto(e.target.value)}
                   placeholder="¿Qué quieres compartir con la comunidad?"
-                  className="textarea"
+                  className="com-textarea"
                   rows={4}
                 />
               </div>
-              {error && <p className="errorMsg">{error}</p>}
-              <button className="btnPrimary" onClick={publicar} disabled={publicando}>
+              <div className="com-campo">
+                <label className="com-label">Imagen (opcional):</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={e => manejarImagen(e, setImagen)}
+                  className="com-inputFile"
+                />
+                {imagen && (
+                  <div className="com-previewBox">
+                    <img src={imagen} alt="preview" className="com-preview" />
+                    <button className="com-btnQuitarImg" onClick={() => setImagen(null)}>
+                      Quitar imagen
+                    </button>
+                  </div>
+                )}
+              </div>
+              {error && <p className="com-errorMsg">{error}</p>}
+              <button className="com-btnPrimary" onClick={publicar} disabled={publicando}>
                 {publicando ? "Publicando..." : "Publicar"}
               </button>
             </div>
           </div>
         )}
 
-        <div className="card">
-          <h2 className="cardTitle">Publicaciones recientes</h2>
-          <div className="divider" />
-          <div className="cardBody">
-            {cargando && <p className="infoTexto">Cargando publicaciones...</p>}
+        <div className="com-card">
+          <h2 className="com-cardTitle">Publicaciones recientes</h2>
+          <div className="com-divider" />
+          <div className="com-cardBody">
+            {cargando && <p className="com-infoTexto">Cargando publicaciones...</p>}
             {!cargando && publicaciones.length === 0 && (
-              <p className="infoTexto">No hay publicaciones aún. ¡Sé el primero en publicar!</p>
+              <p className="com-infoTexto">No hay publicaciones aún. ¡Sé el primero en publicar!</p>
             )}
             {publicaciones.map(pub => (
-              <div key={pub.id} className="publicacion">
-                <div className="pubHeader">
-                    <span className="pubUsuario">👤 {pub.usuario}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <span className="pubFecha">{formatearFecha(pub.fecha_creacion)}</span>
-                        {usuario && pub.usuario === usuario.nombre && (
-                        <button className="btnEliminar" onClick={() => eliminarPublicacion(pub.id)}>
-                            🗑️
+              <div key={pub.id} className="com-publicacion">
+                <div className="com-pubHeader">
+                  <span className="com-pubUsuario">👤 {pub.usuario}</span>
+                  <div className="com-pubHeaderRight">
+                    <span className="com-pubFecha">{formatearFecha(pub.fecha_creacion)}</span>
+                    {usuario && pub.usuario === usuario.nombre && editando !== pub.id && (
+                      <>
+                        <button className="com-btnEliminar" onClick={() => iniciarEdicion(pub)}>
+                          ✏️
                         </button>
-                        )}
-                    </div>
-                    </div>
-                <h3 className="pubTitulo">{pub.titulo}</h3>
-                <p className="pubTexto">{pub.texto}</p>
-                <div className="pubFooter">
-                  <button className="btnComentarios" onClick={() => abrirComentarios(pub)}>
-                    💬 Comentarios
-                  </button>
+                        <button className="com-btnEliminar" onClick={() => eliminarPublicacion(pub.id)}>
+                          🗑️
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
+
+                {editando === pub.id ? (
+                  <>
+                    <input
+                      value={tituloEdit}
+                      onChange={e => setTituloEdit(e.target.value)}
+                      className="com-input com-inputEdit"
+                    />
+                    <textarea
+                      value={textoEdit}
+                      onChange={e => setTextoEdit(e.target.value)}
+                      className="com-textarea"
+                      rows={3}
+                    />
+                    <div className="com-campo">
+                      <label className="com-label">Imagen:</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => manejarImagen(e, setImagenEdit)}
+                        className="com-inputFile"
+                      />
+                      {imagenEdit && (
+                        <div className="com-previewBox">
+                          <img src={imagenEdit} alt="preview" className="com-preview" />
+                          <button className="com-btnQuitarImg" onClick={() => setImagenEdit(null)}>
+                            Quitar imagen
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="com-editBotones">
+                      <button className="com-btnGuardar" onClick={() => guardarEdicion(pub.id)}>
+                        Guardar
+                      </button>
+                      <button className="com-btnComentarios" onClick={cancelarEdicion}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="com-pubTitulo">{pub.titulo}</h3>
+                    <p className="com-pubTexto">{pub.texto}</p>
+                    {pub.imagen && (
+                      <img src={pub.imagen} alt="publicación" className="com-pubImagen" />
+                    )}
+                    <div className="com-pubFooter">
+                      <button className="com-btnComentarios" onClick={() => abrirComentarios(pub)}>
+                        💬 Comentarios
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -211,44 +356,50 @@ export default function Comunidad() {
       </main>
 
       {modalAbierto && publicacionSeleccionada && (
-        <div className="modalOverlay" onClick={cerrarModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modalHeader">
-              <h3 className="modalTitulo">{publicacionSeleccionada.titulo}</h3>
-              <button className="btnCerrar" onClick={cerrarModal}>✕</button>
+        <div className="com-modalOverlay" onClick={cerrarModal}>
+          <div className="com-modal" onClick={e => e.stopPropagation()}>
+            <div className="com-modalHeader">
+              <h3 className="com-modalTitulo">{publicacionSeleccionada.titulo}</h3>
+              <button className="com-btnCerrar" onClick={cerrarModal}>✕</button>
             </div>
-            <p className="modalTexto">{publicacionSeleccionada.texto}</p>
-            <div className="divider" />
+            <p className="com-modalTexto">{publicacionSeleccionada.texto}</p>
+            <div className="com-divider" />
 
-            <div className="comentariosList">
-              {cargandoComentarios && <p className="infoTexto">Cargando comentarios...</p>}
+            <div className="com-comentariosList">
+              {cargandoComentarios && <p className="com-infoTexto">Cargando comentarios...</p>}
               {!cargandoComentarios && comentarios.length === 0 && (
-                <p className="infoTexto">Sin comentarios aún.</p>
+                <p className="com-infoTexto">Sin comentarios aún.</p>
               )}
               {comentarios.map(c => (
-                <div key={c.id} className="comentario">
-                  <div className="comentarioHeader">
-                    <span className="comentarioUsuario">👤 {c.usuario}</span>
-                    <span className="pubFecha">{formatearFecha(c.fecha_publicacion)}</span>
+                <div key={c.id} className="com-comentario">
+                  <div className="com-comentarioHeader">
+                    <span className="com-comentarioUsuario">👤 {c.usuario}</span>
+                    <div className="com-pubHeaderRight">
+                      <span className="com-pubFecha">{formatearFecha(c.fecha_publicacion)}</span>
+                      {usuario && c.usuario === usuario.nombre && (
+                        <button className="com-btnEliminar" onClick={() => eliminarComentario(c.id)}>
+                          🗑️
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <p className="comentarioTexto">{c.texto}</p>
+                  <p className="com-comentarioTexto">{c.texto}</p>
                 </div>
               ))}
             </div>
 
             {usuario && (
-              <div className="comentarBox">
-                <div className="divider" />
+              <div className="com-comentarBox">
+                <div className="com-divider" />
                 <textarea
                   value={textoComentario}
                   onChange={e => setTextoComentario(e.target.value)}
                   placeholder="Escribe un comentario..."
-                  className="textarea"
-                  style={{ marginTop: 12 }}
+                  className="com-textarea com-comentarTextarea"
                   rows={3}
                 />
                 <button
-                  className="btnPrimary"
+                  className="com-btnPrimary"
                   onClick={enviarComentario}
                   disabled={enviandoComentario}
                 >
