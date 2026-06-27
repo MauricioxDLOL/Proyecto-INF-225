@@ -96,6 +96,14 @@ const inicializarDB = async () => {
         usuario_id INTEGER REFERENCES usuarios(id)
       )
     `);
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS historial_peso (
+        id SERIAL PRIMARY KEY,
+        usuario TEXT NOT NULL,
+        peso NUMERIC NOT NULL,
+        fecha DATE DEFAULT CURRENT_DATE
+      )
+    `);
 
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS tipo_dieta TEXT`);
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intolerancias TEXT`);
@@ -152,6 +160,11 @@ app.post('/registro', async (req, res) => {
       `INSERT INTO usuarios (sexo, peso, altura, fecha_nacimiento, actividad, dieta, peso_meta, usuario, correo, tipo_dieta, intolerancias, alimentos_restringidos, contrasena)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [sexo, peso, altura, `${dia}/${mes}/${anio}`, actividad, dieta, pesoMeta, usuario, correo, tipoDieta, intolerancias.join(", "), alimentosRestringidos.join(", "), contrasena]
+    );
+    await pool.query(
+      `INSERT INTO historial_peso (usuario, peso)
+      VALUES ($1, $2)`,
+      [usuario, peso]
     );
     res.json({ mensaje: 'Usuario guardado correctamente' });
   } catch (err) {
@@ -486,6 +499,50 @@ app.get("/buscar-alimentos", async (req, res) => {
     res.status(500).json({ error: "Error interno del servidor." });
   }
 });
+
+app.post('/peso', async (req, res) => {
+  const { usuario, peso } = req.body;
+
+  try {
+    await pool.query(
+      `INSERT INTO historial_peso (usuario, peso)
+       VALUES ($1, $2)`,
+      [usuario, peso]
+    );
+
+    await pool.query(
+      `UPDATE usuarios
+       SET peso = $1
+       WHERE usuario = $2`,
+      [peso, usuario]
+    );
+
+    res.json({ mensaje: "Peso registrado correctamente" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error al registrar peso");
+  }
+});
+
+app.get('/peso/:usuario', async (req, res) => {
+  const { usuario } = req.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT peso, fecha
+       FROM historial_peso
+       WHERE usuario = $1
+       ORDER BY fecha ASC`,
+      [usuario]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error al obtener historial de peso");
+  }
+});
+
 app.post("/agregar-alimento-diario", async (req, res) => {
   // ✅ AQUÍ SÍ: Imprime lo que llega desde React en los logs de tu terminal/Docker
   console.log("📦 Datos recibidos en el Backend:", req.body);

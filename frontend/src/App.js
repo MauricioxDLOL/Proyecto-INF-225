@@ -7,6 +7,7 @@ import Metas from "./Metas";
 import Login from "./Login";
 import Comunidad from "./Comunidad";
 import BuscarAlimento from "./BuscarAlimento";
+import SeguimientoPeso from "./SeguimientoPeso";
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
         <Route path="/metas" element={<Metas />} />
         <Route path="/comunidad" element={<Comunidad />} />
         <Route path="/perfil" element={<div>Página de Perfil en construcción</div>} />
+        <Route path="/seguimiento-peso" element={<SeguimientoPeso />} />
         
       </Routes>
     </BrowserRouter>

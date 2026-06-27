@@ -276,3 +276,26 @@
   padding: 10px;
   border-radius: 4px;
 }
+
+
+.btn-peso {
+  margin-top: 12px;
+  background-color: #2db84d;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.btn-peso:hover {
+  background-color: #259e40;
+}
+
+.welcome-buttons {
+  display: flex;
+  gap: 14px;
+  justify-content: flex-end;
+  align-items: center;
+}
