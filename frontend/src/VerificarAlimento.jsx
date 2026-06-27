@@ -10,7 +10,15 @@ export default function VerificarAlimento() {
   const [error, setError] = useState("");
   const [guardado, setGuardado] = useState(false);
   const navigate = useNavigate();
-  const usuario = localStorage.getItem("usuario");
+ 
+let usuario = null;
+try {
+  const stored = localStorage.getItem("usuario");
+  if (stored) {
+    const obj = JSON.parse(stored);
+    usuario = typeof obj === 'string' ? obj : obj?.nombre;
+  }
+} catch {}
 
   useEffect(() => {
     if (!usuario) navigate("/");
