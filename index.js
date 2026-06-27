@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require('express');
 const pool = require('./db');
 const app = express();
@@ -267,6 +269,7 @@ app.post('/verificar-alimento', async (req, res) => {
   }
 });
 
+
 app.post('/guardar-alimento', async (req, res) => {
   const { usuario, alimento, seguro, mensaje } = req.body;
   try {
@@ -431,6 +434,178 @@ app.delete('/comentarios/:id', async (req, res) => {
     res.json({ mensaje: 'Comentario eliminado' });
   } catch (err) {
     res.status(500).send('Error al eliminar comentario');
+  }
+});
+
+app.get("/buscar-alimentos", async (req, res) => {
+  const { query } = req.query;
+
+  if (!query) {
+    return res.status(400).json({ error: "Falta el término de búsqueda." });
+  }
+
+  try {
+
+    const respuestaSpoon = await fetch(
+      `https://api.spoonacular.com/food/ingredients/search?query=${query}&number=10&apiKey=${process.env.SPOONACULAR_API_KEY}`
+    );
+
+    const data = await respuestaSpoon.json();
+
+    console.log(data);
+
+    const resultadosMapeados = data.results.map(item => ({
+      id: item.id,
+      name: item.name,
+      image: item.image
+    }));
+
+    res.json({
+      results: resultadosMapeados
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      error: "Error interno del servidor."
+    });
+
+  }
+});
+
+ app.get("/informacion-alimento", async (req, res) => {
+  const { id, usuario } = req.query;
+  if (!id) return res.status(400).json({ error: "Falta el ID del alimento." });
+
+  try {
+    console.log(`\n🔍 [Backend] Buscando info en Spoonacular para el ID: ${id}`);
+    
+    const respuestaSpoon = await fetch(
+      `https://api.spoonacular.com/food/ingredients/${id}/information?amount=100&unit=g&apiKey=${process.env.SPOONACULAR_API_KEY}`
+    );
+    const infoAlimento = await respuestaSpoon.json();
+
+    console.log("📦 [Backend] Respuesta cruda de Spoonacular:", JSON.stringify(infoAlimento.nutrition?.nutrients, null, 2));
+
+    if (!infoAlimento || infoAlimento.status === "failure") {
+      return res.status(404).json({ error: "No se encontró información." });
+    }
+
+    const nutrientes = infoAlimento.nutrition?.nutrients || [];
+    
+    const buscarNutriente = (nameKey) => {
+      const encontrado = nutrientes.find(n => n.name.toLowerCase() === nameKey.toLowerCase());
+      return encontrado ? encontrado.amount : 0;
+    };
+
+    const calorias = buscarNutriente("Calories");
+    const proteinas = buscarNutriente("Protein");
+    const carbohidratos = buscarNutriente("Carbohydrates") || buscarNutriente("Carbohydrates (by difference)");
+    const grasas = buscarNutriente("Fat");
+
+    console.log(`✨ [Backend] Mapeo final -> Cal: ${calorias}, Prot: ${proteinas}, Carb: ${carbohidratos}, Grasas: ${grasas}\n`);
+
+    let alertaRestriccion = null; 
+    let esSeguro = true;
+
+    if (usuario) {
+      const userResult = await pool.query(
+        'SELECT intolerancias, alimentos_restringidos, tipo_dieta FROM usuarios WHERE usuario = $1', 
+        [usuario]
+      );
+
+      if (userResult.rows.length > 0) {
+        const { intolerancias, alimentos_restringidos, tipo_dieta } = userResult.rows[0];
+        const categorias = {
+          "Lactosa": ["milk", "cheese", "butter", "yogurt", "cream", "lactose", "dairy"],
+          "Gluten": ["wheat", "bread", "flour", "barley", "rye", "pasta", "gluten"],
+          "vegano": ["meat", "chicken", "beef", "pork", "fish", "shrimp", "egg", "milk", "cheese", "honey"],
+          "vegetariano": ["meat", "chicken", "beef", "pork", "fish", "shrimp"],
+          "keto": ["sugar", "rice", "bread", "pasta", "flour", "potato"]
+        };
+
+        const nombreAlimento = (infoAlimento.name || "").toLowerCase();
+
+        if (alimentos_restringidos) {
+          const listaRestringidos = alimentos_restringidos.toLowerCase().split(', ');
+          const coincidencia = listaRestringidos.find(r => r !== 'ninguna' && r !== '' && nombreAlimento.includes(r));
+          if (coincidencia) {
+            esSeguro = false;
+            alertaRestriccion = `⚠️ ¡Cuidado! Tienes "${coincidencia}" en tus alérgenos restringidos personales.`;
+          }
+        }
+
+        if (esSeguro && intolerancias) {
+          const listaIntolerancias = intolerancias.split(', ');
+          for (const intolerancia of listaIntolerancias) {
+            const palabrasClave = categorias[intolerancia] || [];
+            const conflicto = palabrasClave.find(p => nombreAlimento.includes(p));
+            if (conflicto) {
+              esSeguro = false;
+              alertaRestriccion = `⚠️ Alerta de Alérgeno: Este ingrediente se asocia con tu intolerancia a la ${intolerancia}.`;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    res.json({
+      id: infoAlimento.id,
+      name: infoAlimento.name || "Ingrediente",
+      seguro: esSeguro,
+      mensajeAlerta: alertaRestriccion || "✅ Este alimento es seguro para tus restricciones actuales.",
+      nutrientes: { calorias, proteinas, carbohidratos, grasas }
+    });
+
+  } catch (error) {
+    console.error("🔴 Error en backend:", error);
+    res.status(500).json({ error: "Error interno del servidor." });
+  }
+});
+app.post("/agregar-alimento-diario", async (req, res) => {
+  console.log("📦 Datos recibidos en el Backend:", req.body);
+
+  const {
+    usuario,
+    nombre,
+    calorias,
+    proteinas,
+    carbohidratos,
+    grasas
+  } = req.body;
+
+  try {
+    const existe = await pool.query(
+      `SELECT * FROM resumen_diario WHERE usuario=$1 AND fecha=CURRENT_DATE`,
+      [usuario]
+    );
+
+    if (existe.rows.length === 0) {
+      await pool.query(
+        `INSERT INTO resumen_diario (usuario, calorias_consumidas, proteina, carbohidratos, grasa)
+         VALUES($1, $2, $3, $4, $5)`,
+        [usuario, calorias, proteinas, carbohidratos, grasas]
+      );
+    } else {
+      await pool.query(
+        `UPDATE resumen_diario 
+         SET calorias_consumidas = calorias_consumidas + $2,
+             proteina = proteina + $3,
+             carbohidratos = carbohidratos + $4,
+             grasa = grasa + $5
+         WHERE usuario=$1 AND fecha=CURRENT_DATE`,
+        [usuario, calorias, proteinas, carbohidratos, grasas]
+      );
+    }
+
+    res.json({ mensaje: "✅ Alimento agregado correctamente." });
+
+  } catch (error) {
+    console.error("❌ Error en el backend:", error);
+    res.status(500).json({ error: "Error al guardar." });
   }
 });
 

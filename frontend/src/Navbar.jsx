@@ -53,13 +53,7 @@ return (
           )}
         </div>
       </div>
-
-      <div className="bottom-bar">
-        <div className="search-bar">
-          <input type="text" placeholder="Buscar alimentos..." />
-          <button>🔍</button>
-        </div>
-      </div>
+    
     </header>
   );
 }
