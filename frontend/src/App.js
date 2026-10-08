@@ -8,6 +8,8 @@ import Login from "./Login";
 import Comunidad from "./Comunidad";
 import BuscarAlimento from "./BuscarAlimento";
 import SeguimientoPeso from "./SeguimientoPeso";
+import PerfilPublico from "./PerfilPublico";
+import PerfilPublicoVista from "./PerfilPublicoVista";
 
 function App() {
   return (
@@ -20,7 +22,8 @@ function App() {
         <Route path="/agregar" element={<BuscarAlimento />} />
         <Route path="/metas" element={<Metas />} />
         <Route path="/comunidad" element={<Comunidad />} />
-        <Route path="/perfil" element={<div>Página de Perfil en construcción</div>} />
+        <Route path="/perfil" element={<PerfilPublico />} />
+        <Route path="/miembro/:usuario" element={<PerfilPublicoVista />} />
         <Route path="/seguimiento-peso" element={<SeguimientoPeso />} />
         
       </Routes>

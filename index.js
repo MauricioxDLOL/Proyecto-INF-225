@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require('express');
 const pool = require('./db');
+const { router: perfilRouter, inicializarPerfil } = require('./perfilPublico');
 const app = express();
 const port = 3000;
 
@@ -111,6 +112,7 @@ const inicializarDB = async () => {
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intolerancias TEXT`);
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS alimentos_restringidos TEXT`);
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS contrasena TEXT`);
+    await inicializarPerfil();
 
     console.log('Tablas inicializadas correctamente');
   } catch (err) {
@@ -665,6 +667,8 @@ app.post("/agregar-alimento-diario", async (req, res) => {
     res.status(500).json({ error: "Error al guardar." });
   }
 });
+
+app.use(perfilRouter);
 
 app.listen(port, () => {
   console.log(`App corriendo en http://localhost:${port}`);

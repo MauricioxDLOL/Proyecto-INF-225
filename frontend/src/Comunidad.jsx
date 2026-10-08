@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import "./Comunidad.css";
+import { Link } from "react-router-dom";
 
 export default function Comunidad() {
   const [publicaciones, setPublicaciones] = useState([]);
@@ -280,7 +281,7 @@ export default function Comunidad() {
             {publicaciones.map(pub => (
               <div key={pub.id} className="com-publicacion">
                 <div className="com-pubHeader">
-                  <span className="com-pubUsuario">👤 {pub.usuario}</span>
+                  <span className="com-pubUsuario">👤 <Link to={`/miembro/${pub.usuario}`} style={{ color: "inherit", textDecoration: "underline" }}>{pub.usuario}</Link></span>
                   <div className="com-pubHeaderRight">
                     <span className="com-pubFecha">{formatearFecha(pub.fecha_creacion)}</span>
                     {usuario && pub.usuario === usuario.nombre && editando !== pub.id && (
@@ -373,7 +374,7 @@ export default function Comunidad() {
               {comentarios.map(c => (
                 <div key={c.id} className="com-comentario">
                   <div className="com-comentarioHeader">
-                    <span className="com-comentarioUsuario">👤 {c.usuario}</span>
+                    <span className="com-comentarioUsuario">👤 <Link to={`/miembro/${c.usuario}`} style={{ color: "inherit", textDecoration: "underline" }}>{c.usuario}</Link></span>
                     <div className="com-pubHeaderRight">
                       <span className="com-pubFecha">{formatearFecha(c.fecha_publicacion)}</span>
                       {usuario && c.usuario === usuario.nombre && (
