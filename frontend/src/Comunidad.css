@@ -320,3 +320,52 @@
   color: #fff;
   font-weight: bold;
 }
+
+
+.com-recetaCompartida {
+  display: block;
+  padding: 16px;
+  margin: 12px 0;
+  border: 1px solid #d7e7d7;
+  border-radius: 8px;
+  background: #f5faf3;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.com-recetaCompartida:hover {
+  background: #eaf5e7;
+}
+
+.com-recetaCompartidaHeader {
+  display: flex;
+  justify-content: space-between;
+  color: #299c49;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.com-recetaCompartida h4 {
+  margin: 12px 0 6px;
+  font-size: 17px;
+}
+
+.com-recetaCompartida p {
+  color: #666;
+  font-size: 13px;
+}
+
+.com-recetaCompartidaMacros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 14px 0;
+  font-size: 12px;
+}
+
+.com-recetaCompartidaLink {
+  color: #299c49;
+  font-size: 13px;
+  font-weight: bold;
+}

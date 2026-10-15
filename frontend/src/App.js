@@ -10,6 +10,9 @@ import BuscarAlimento from "./BuscarAlimento";
 import SeguimientoPeso from "./SeguimientoPeso";
 import PerfilPublico from "./PerfilPublico";
 import PerfilPublicoVista from "./PerfilPublicoVista";
+import Recetario from "./Recetario";
+import CrearReceta from "./CrearReceta";
+import DetalleReceta from "./DetalleReceta";
 
 function App() {
   return (
@@ -25,6 +28,9 @@ function App() {
         <Route path="/perfil" element={<PerfilPublico />} />
         <Route path="/miembro/:usuario" element={<PerfilPublicoVista />} />
         <Route path="/seguimiento-peso" element={<SeguimientoPeso />} />
+        <Route path="/recetario" element={<Recetario/>} />
+        <Route path="/crear-receta" element={<CrearReceta/>} />
+        <Route path="/recetario/:id" element={<DetalleReceta />} />
         
       </Routes>
     </BrowserRouter>

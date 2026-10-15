@@ -340,6 +340,53 @@ export default function Comunidad() {
                   <>
                     <h3 className="com-pubTitulo">{pub.titulo}</h3>
                     <p className="com-pubTexto">{pub.texto}</p>
+
+                    {pub.receta_id && pub.receta_nombre && (
+                      <Link
+                        to={`/recetario/${pub.receta_id}`}
+                        className="com-recetaCompartida"
+                      >
+                        <div className="com-recetaCompartidaHeader">
+                          <span>📖 Receta de la comunidad</span>
+                          <span>↗</span>
+                        </div>
+
+                        <h4>{pub.receta_nombre}</h4>
+
+                        {pub.receta_descripcion && (
+                          <p>{pub.receta_descripcion}</p>
+                        )}
+
+                        <div className="com-recetaCompartidaMacros">
+                          <span>
+                            🔥 {Math.round(
+                              Number(pub.receta_calorias) /
+                              Number(pub.receta_porciones)
+                            )} kcal
+                          </span>
+
+                          <span>
+                            💪 {(
+                              Number(pub.receta_proteinas) /
+                              Number(pub.receta_porciones)
+                            ).toFixed(1)} g proteína
+                          </span>
+
+                          <span>
+                            🍞 {(
+                              Number(pub.receta_carbohidratos) /
+                              Number(pub.receta_porciones)
+                            ).toFixed(1)} g carbos
+                          </span>
+                        </div>
+
+                        <span className="com-recetaCompartidaLink">
+                          Ver receta completa →
+                        </span>
+                      </Link>
+                    )}
+
+                    
                     {pub.imagen && (
                       <img src={pub.imagen} alt="publicación" className="com-pubImagen" />
                     )}

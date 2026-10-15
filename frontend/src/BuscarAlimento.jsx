@@ -1,10 +1,12 @@
 import { useState } from "react";
 import "./BuscarAlimento.css";
+import BuscarRecetas from "./BuscarRecetas";
 
 function BuscarAlimento() {
   const [busqueda, setBusqueda] = useState("");
   const [resultados, setResultados] = useState([]);
   const [cargando, setCargando] = useState(false);
+  const [cantidad, setCantidad] = useState(100);
   
   const [detalleAlimento, setDetalleAlimento] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
@@ -55,14 +57,24 @@ function BuscarAlimento() {
     const usuarioSesion =
       JSON.parse(localStorage.getItem("usuario")) || { nombre: "testuser" };
 
-    const bodyData = {
-      usuario: usuarioSesion.nombre,
-      nombre: detalleAlimento?.name || "Alimento",
-      calorias: detalleAlimento?.nutrientes?.calorias || 0,
-      proteinas: detalleAlimento?.nutrientes?.proteinas || 0,
-      carbohidratos: detalleAlimento?.nutrientes?.carbohidratos || 0,
-      grasas: detalleAlimento?.nutrientes?.grasas || 0,
-    };
+      const gramos = Number(cantidad);
+
+  if (!Number.isFinite(gramos) || gramos <= 0) {
+    alert("Ingresa una cantidad válida en gramos.");
+    return;
+  }
+
+  const factor = gramos / 100;
+
+  const bodyData = {
+    usuario: usuarioSesion.nombre,
+    nombre: detalleAlimento?.name || "Alimento",
+    cantidad: gramos,
+    calorias: (detalleAlimento?.nutrientes?.calorias || 0) * factor,
+    proteinas: (detalleAlimento?.nutrientes?.proteinas || 0) * factor,
+    carbohidratos: (detalleAlimento?.nutrientes?.carbohidratos || 0) * factor,
+    grasas: (detalleAlimento?.nutrientes?.grasas || 0) * factor
+  };
 
     console.log("Datos enviados desde React:", bodyData);
 
@@ -79,11 +91,16 @@ function BuscarAlimento() {
       );
 
       const data = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(data.error || "Error al guardar.");
+      }
+
       alert(data.mensaje);
 
     } catch (error) {
       console.error("Error en el fetch de React:", error);
-      alert("Error al agregar alimento");
+      alert(error.message || "Error al agregar alimento");
     }
   };
 
@@ -175,6 +192,28 @@ function BuscarAlimento() {
             </div>
 
             <div style={{ textAlign: "center", marginTop: "25px" }}>
+              <div style={{ marginBottom: "15px" }}>
+                <label htmlFor="cantidad-alimento">
+                  Cantidad consumida (gramos):
+                </label>
+
+                <input
+                  id="cantidad-alimento"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={cantidad}
+                  onChange={(e) => setCantidad(e.target.value)}
+                  style={{
+                    display: "block",
+                    margin: "10px auto",
+                    padding: "10px",
+                    width: "120px",
+                    borderRadius: "6px",
+                    border: "1px solid #ccc"
+                  }}
+                />
+              </div>
               <button
                 onClick={agregarAlDiario}
                 style={{
@@ -222,6 +261,7 @@ function BuscarAlimento() {
             </div>
           )}
         </section>
+        <BuscarRecetas />
 
       </main>
     </div>

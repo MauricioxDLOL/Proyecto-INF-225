@@ -1,0 +1,98 @@
+
+.agregar-receta-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.agregar-receta-modal {
+  background: white;
+  border-radius: 14px;
+  padding: 25px;
+  width: 100%;
+  max-width: 470px;
+  box-sizing: border-box;
+}
+
+.agregar-receta-encabezado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.agregar-receta-encabezado h2 {
+  margin: 0;
+}
+
+.agregar-receta-encabezado button {
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.agregar-receta-modal label {
+  display: block;
+  margin: 20px 0 10px;
+  font-weight: bold;
+}
+
+.agregar-receta-modal input {
+  padding: 12px;
+  width: 100%;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.agregar-receta-macros {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 22px 0;
+}
+
+.agregar-receta-macros div {
+  background: #eef5ec;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.agregar-receta-macros strong {
+  display: block;
+  color: #2db84d;
+  font-size: 21px;
+}
+
+.agregar-receta-macros span {
+  display: block;
+  color: #666;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.agregar-receta-confirmar {
+  width: 100%;
+  background: #2db84d;
+  color: white;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.agregar-receta-confirmar:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agregar-receta-error {
+  color: #c62828;
+}

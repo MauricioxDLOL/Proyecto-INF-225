@@ -1,0 +1,144 @@
+
+.crear-receta-page {
+  min-height: 100vh;
+  background: #eef5ec;
+  padding: 30px;
+  font-family: Arial, sans-serif;
+}
+
+.crear-receta-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.crear-receta-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 25px;
+}
+
+.receta-seccion {
+  background: white;
+  border: 1px solid #d9e6d5;
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 20px;
+}
+
+.receta-seccion h2 {
+  margin-top: 0;
+}
+
+.receta-seccion label {
+  display: block;
+  font-weight: bold;
+  margin: 15px 0 7px;
+}
+
+.receta-seccion input,
+.receta-seccion textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.receta-seccion textarea {
+  resize: vertical;
+}
+
+.receta-buscador {
+  display: flex;
+  gap: 10px;
+}
+
+.crear-receta-page button {
+  padding: 10px 16px;
+  background: #2db84d;
+  color: white;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.crear-receta-page button:hover:not(:disabled) {
+  background: #23963d;
+}
+
+.crear-receta-page button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.receta-resultado,
+.receta-ingrediente {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.receta-resultado span,
+.receta-ingrediente span:first-child {
+  flex: 1;
+}
+
+.receta-ingrediente input {
+  width: 90px;
+}
+
+.receta-error {
+  color: #c62828;
+}
+
+.receta-macros {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 15px;
+}
+
+.receta-macro {
+  padding: 18px;
+  background: #f3f9f1;
+  border: 1px solid #d9e6d5;
+  border-radius: 10px;
+}
+
+.receta-macro h3 {
+  font-size: 14px;
+  margin: 0 0 12px;
+}
+
+.receta-macro strong {
+  display: block;
+  color: #2db84d;
+  font-size: 22px;
+}
+
+.receta-macro small {
+  display: block;
+  margin-top: 8px;
+  color: #666;
+}
+
+.receta-publicar {
+  width: 100%;
+  padding: 15px !important;
+  font-size: 16px;
+}
+
+@media (max-width: 700px) {
+  .receta-macros {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .crear-receta-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

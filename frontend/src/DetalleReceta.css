@@ -1,0 +1,105 @@
+
+.detalle-receta-page {
+  min-height: 100vh;
+  background: #eef5ec;
+  padding: 30px;
+  font-family: Arial, sans-serif;
+}
+
+.detalle-receta-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.detalle-volver {
+  background: transparent;
+  color: #278e40;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  margin-bottom: 20px;
+}
+
+.detalle-receta-card {
+  background: white;
+  padding: 25px;
+  border: 1px solid #d9e6d5;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.detalle-receta-card h1 {
+  margin-top: 0;
+  font-size: 30px;
+}
+
+.detalle-receta-card h2 {
+  margin-top: 0;
+  font-size: 21px;
+}
+
+.detalle-autor {
+  color: #777;
+  font-size: 14px;
+}
+
+.detalle-macros {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.detalle-macro {
+  background: #f3f9f1;
+  padding: 18px 10px;
+  border-radius: 9px;
+  text-align: center;
+}
+
+.detalle-macro span {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+.detalle-macro strong {
+  color: #2db84d;
+  font-size: 20px;
+}
+
+.detalle-ingrediente {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 14px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.detalle-instrucciones {
+  white-space: pre-wrap;
+  line-height: 1.8;
+}
+
+@media (max-width: 650px) {
+  .detalle-macros {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.receta-agregar-diario {
+  background: #2db84d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 22px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.receta-agregar-diario:hover {
+  background: #23963d;
+}

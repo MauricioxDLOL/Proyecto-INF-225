@@ -38,6 +38,7 @@ return (
           <Link to="/metas" className={isActive("/metas")}>Metas</Link>
           <Link to="/perfil" className={isActive("/perfil")}>Perfil</Link>
           <Link to="/seguimiento-peso" className={isActive("/seguimiento-peso")}>Historial de Peso</Link>
+          <Link to="/recetario" className={isActive("/recetario")}>Recetario</Link>
         </nav>
 
         <div className="user-nav">

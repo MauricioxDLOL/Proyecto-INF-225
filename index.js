@@ -91,6 +91,12 @@ const inicializarDB = async () => {
     await pool.query(`ALTER TABLE publicaciones ADD COLUMN IF NOT EXISTS imagen TEXT`);
 
     await pool.query(`
+      ALTER TABLE publicaciones
+      ADD COLUMN IF NOT EXISTS receta_id INTEGER
+      REFERENCES recetas(id) ON DELETE SET NULL
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS comentarios (
         id SERIAL PRIMARY KEY,
         texto TEXT NOT NULL,
@@ -107,6 +113,70 @@ const inicializarDB = async () => {
         fecha DATE DEFAULT CURRENT_DATE
       )
     `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS recetas (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+        nombre TEXT NOT NULL,
+        descripcion TEXT,
+        instrucciones TEXT NOT NULL,
+        porciones INTEGER NOT NULL CHECK (porciones > 0),
+        calorias NUMERIC DEFAULT 0,
+        proteinas NUMERIC DEFAULT 0,
+        carbohidratos NUMERIC DEFAULT 0,
+        grasas NUMERIC DEFAULT 0,
+        imagen TEXT,
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS receta_ingredientes (
+        id SERIAL PRIMARY KEY,
+        receta_id INTEGER NOT NULL
+          REFERENCES recetas(id) ON DELETE CASCADE,
+        spoonacular_id INTEGER NOT NULL,
+        nombre TEXT NOT NULL,
+        cantidad NUMERIC NOT NULL CHECK (cantidad > 0),
+        unidad TEXT DEFAULT 'g',
+        calorias NUMERIC DEFAULT 0,
+        proteinas NUMERIC DEFAULT 0,
+        carbohidratos NUMERIC DEFAULT 0,
+        grasas NUMERIC DEFAULT 0
+      )
+    `);
+
+
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS registro_ingestas (
+    id SERIAL PRIMARY KEY,
+
+    usuario_id INTEGER NOT NULL
+      REFERENCES usuarios(id),
+
+    tipo VARCHAR(20) NOT NULL
+      CHECK (tipo IN ('alimento', 'receta')),
+
+    receta_id INTEGER
+      REFERENCES recetas(id) ON DELETE SET NULL,
+
+    nombre TEXT NOT NULL,
+
+    cantidad NUMERIC NOT NULL DEFAULT 1
+      CHECK (cantidad > 0),
+
+    unidad VARCHAR(20) NOT NULL,
+
+    calorias NUMERIC NOT NULL DEFAULT 0,
+    proteinas NUMERIC NOT NULL DEFAULT 0,
+    carbohidratos NUMERIC NOT NULL DEFAULT 0,
+    grasas NUMERIC NOT NULL DEFAULT 0,
+
+    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS tipo_dieta TEXT`);
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intolerancias TEXT`);
@@ -359,6 +429,298 @@ app.get('/metas/:id', async (req, res) => {
   }
 });
 
+app.post('/recetas', async (req, res) => {
+  const {
+    usuario,
+    nombre,
+    descripcion,
+    instrucciones,
+    porciones,
+    ingredientes
+  } = req.body;
+
+  // Validar los datos generales.
+  if (
+    typeof usuario !== 'string' || !usuario.trim() ||
+    typeof nombre !== 'string' || !nombre.trim() ||
+    typeof instrucciones !== 'string' || !instrucciones.trim() ||
+    !Number.isInteger(Number(porciones)) ||
+    Number(porciones) <= 0 ||
+    !Array.isArray(ingredientes) ||
+    ingredientes.length === 0
+  ) {
+    return res.status(400).json({
+      error: 'Faltan datos obligatorios de la receta.'
+    });
+  }
+
+  // Validar los ingredientes.
+  for (const ingrediente of ingredientes) {
+    if (
+      !Number.isInteger(Number(ingrediente.id)) ||
+      typeof ingrediente.nombre !== 'string' ||
+      !ingrediente.nombre.trim() ||
+      !Number.isFinite(Number(ingrediente.cantidad)) ||
+      Number(ingrediente.cantidad) <= 0 ||
+      !ingrediente.nutrientes ||
+      ['calorias', 'proteinas', 'carbohidratos', 'grasas']
+        .some(macro =>
+          !Number.isFinite(Number(ingrediente.nutrientes[macro])) ||
+          Number(ingrediente.nutrientes[macro]) < 0
+        )
+    ) {
+      return res.status(400).json({
+        error: 'Hay ingredientes con datos inválidos.'
+      });
+    }
+  }
+
+  const cliente = await pool.connect().catch(() => null);
+
+  if (!cliente) {
+    return res.status(500).json({
+      error: 'No se pudo conectar a la base de datos.'
+    });
+  }
+
+  try {
+    await cliente.query('BEGIN');
+
+    // Obtener el ID del usuario existente.
+    const resultadoUsuario = await cliente.query(
+      'SELECT id FROM usuarios WHERE usuario = $1',
+      [usuario]
+    );
+
+    if (resultadoUsuario.rows.length === 0) {
+      await cliente.query('ROLLBACK');
+      return res.status(404).json({
+        error: 'Usuario no encontrado.'
+      });
+    }
+
+    const usuarioId = resultadoUsuario.rows[0].id;
+
+    // Calcular los nutrientes totales.
+    const totales = {
+      calorias: 0,
+      proteinas: 0,
+      carbohidratos: 0,
+      grasas: 0
+    };
+
+    for (const ingrediente of ingredientes) {
+      const factor = Number(ingrediente.cantidad) / 100;
+
+      for (const macro of Object.keys(totales)) {
+        totales[macro] +=
+          Number(ingrediente.nutrientes[macro]) * factor;
+      }
+    }
+
+    // Guardar la receta.
+    const resultadoReceta = await cliente.query(
+      `INSERT INTO recetas
+       (usuario_id, nombre, descripcion, instrucciones,
+        porciones, calorias, proteinas, carbohidratos, grasas)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id`,
+      [
+        usuarioId,
+        nombre.trim(),
+        descripcion || '',
+        instrucciones.trim(),
+        Number(porciones),
+        totales.calorias,
+        totales.proteinas,
+        totales.carbohidratos,
+        totales.grasas
+      ]
+    );
+
+    const recetaId = resultadoReceta.rows[0].id;
+
+    // Guardar cada ingrediente.
+    for (const ingrediente of ingredientes) {
+      const factor = Number(ingrediente.cantidad) / 100;
+      const n = ingrediente.nutrientes;
+
+      await cliente.query(
+        `INSERT INTO receta_ingredientes
+         (receta_id, spoonacular_id, nombre, cantidad,
+          unidad, calorias, proteinas, carbohidratos, grasas)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          recetaId,
+          ingrediente.id,
+          ingrediente.nombre,
+          Number(ingrediente.cantidad),
+          'g',
+          Number(n.calorias) * factor,
+          Number(n.proteinas) * factor,
+          Number(n.carbohidratos) * factor,
+          Number(n.grasas) * factor
+        ]
+      );
+    }
+
+    await cliente.query('COMMIT');
+
+    res.status(201).json({
+      mensaje: 'Receta publicada correctamente.',
+      receta_id: recetaId
+    });
+
+  } catch (error) {
+    await cliente.query('ROLLBACK');
+    console.error('Error publicando receta:', error);
+
+    res.status(500).json({
+      error: 'No se pudo publicar la receta.'
+    });
+
+  } finally {
+    cliente.release();
+  }
+});
+
+
+app.get('/recetas', async (req, res) => {
+  try {
+    const resultado = await pool.query(`
+      SELECT
+        r.id,
+        r.nombre,
+        r.descripcion,
+        r.instrucciones,
+        r.porciones,
+        r.calorias,
+        r.proteinas,
+        r.carbohidratos,
+        r.grasas,
+        r.imagen,
+        r.fecha_creacion,
+        u.usuario AS autor
+      FROM recetas r
+      JOIN usuarios u ON r.usuario_id = u.id
+      ORDER BY r.fecha_creacion DESC, r.id DESC
+    `);
+
+    res.json(resultado.rows);
+
+  } catch (error) {
+    console.error("Error obteniendo recetas:", error);
+
+    res.status(500).json({
+      error: "No se pudieron obtener las recetas."
+    });
+  }
+});
+
+
+app.get('/recetas/:id', async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({
+      error: "ID de receta inválido."
+    });
+  }
+
+  try {
+    const resultadoReceta = await pool.query(
+      `SELECT
+        r.id,
+        r.nombre,
+        r.descripcion,
+        r.instrucciones,
+        r.porciones,
+        r.calorias,
+        r.proteinas,
+        r.carbohidratos,
+        r.grasas,
+        r.imagen,
+        r.fecha_creacion,
+        u.usuario AS autor
+       FROM recetas r
+       JOIN usuarios u ON r.usuario_id = u.id
+       WHERE r.id = $1`,
+      [id]
+    );
+
+    if (resultadoReceta.rows.length === 0) {
+      return res.status(404).json({
+        error: "Receta no encontrada."
+      });
+    }
+
+    const resultadoIngredientes = await pool.query(
+      `SELECT
+        id,
+        spoonacular_id,
+        nombre,
+        cantidad,
+        unidad,
+        calorias,
+        proteinas,
+        carbohidratos,
+        grasas
+       FROM receta_ingredientes
+       WHERE receta_id = $1
+       ORDER BY id`,
+      [id]
+    );
+
+    res.json({
+      ...resultadoReceta.rows[0],
+      ingredientes: resultadoIngredientes.rows
+    });
+
+  } catch (error) {
+    console.error("Error obteniendo receta:", error);
+
+    res.status(500).json({
+      error: "No se pudo obtener la receta."
+    });
+  }
+});
+
+
+async function registrarIngesta(cliente, datos) {
+  const {
+    usuarioId,
+    tipo,
+    recetaId = null,
+    nombre,
+    cantidad,
+    unidad,
+    calorias,
+    proteinas,
+    carbohidratos,
+    grasas
+  } = datos;
+
+  await cliente.query(
+    `INSERT INTO registro_ingestas
+      (usuario_id, tipo, receta_id, nombre, cantidad,
+       unidad, calorias, proteinas, carbohidratos, grasas)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [
+      usuarioId,
+      tipo,
+      recetaId,
+      nombre,
+      cantidad,
+      unidad,
+      calorias,
+      proteinas,
+      carbohidratos,
+      grasas
+    ]
+  );
+}
+
+
 app.post('/publicaciones', async (req, res) => {
   const { titulo, texto, usuario, imagen } = req.body;
   try {
@@ -373,15 +735,112 @@ app.post('/publicaciones', async (req, res) => {
   }
 });
 
+app.post("/compartir-receta", async (req, res) => {
+  const { usuario, receta_id, comentario } = req.body;
+  if (
+    typeof comentario !== "string" ||
+    !comentario.trim() ||
+    comentario.trim().length > 1000
+  ) {
+    return res.status(400).json({
+      error: "Escribe un comentario de máximo 1000 caracteres."
+    });
+  }
+  const recetaId = Number(receta_id);
 
-app.get('/publicaciones', async (req, res) => {
+  if (
+    typeof usuario !== "string" ||
+    !usuario.trim() ||
+    !Number.isInteger(recetaId) ||
+    recetaId <= 0
+  ) {
+    return res.status(400).json({
+      error: "Datos inválidos."
+    });
+  }
+
   try {
-    const result = await pool.query(`SELECT p.*, u.usuario FROM publicaciones p JOIN usuarios u ON p.usuario_id = u.id ORDER BY p.fecha_creacion DESC`);
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).send('Error al obtener publicaciones');
+    const usuarioResult = await pool.query(
+      "SELECT id FROM usuarios WHERE usuario = $1",
+      [usuario.trim()]
+    );
+
+    if (usuarioResult.rows.length === 0) {
+      return res.status(404).json({
+        error: "Usuario no encontrado."
+      });
+    }
+
+    const recetaResult = await pool.query(
+      "SELECT id, nombre FROM recetas WHERE id = $1",
+      [recetaId]
+    );
+
+    if (recetaResult.rows.length === 0) {
+      return res.status(404).json({
+        error: "Receta no encontrada."
+      });
+    }
+
+    const receta = recetaResult.rows[0];
+
+    const resultado = await pool.query(
+      `INSERT INTO publicaciones
+       (titulo, texto, usuario_id, receta_id)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [
+        `${usuario.trim()} ha compartido una receta`,
+        comentario.trim(),
+        usuarioResult.rows[0].id,
+        receta.id
+      ]
+    );
+
+    res.status(201).json({
+      mensaje: "Receta compartida en Comunidad.",
+      publicacion_id: resultado.rows[0].id
+    });
+
+  } catch (error) {
+    console.error("Error compartiendo receta:", error);
+    res.status(500).json({
+      error: "No se pudo compartir la receta."
+    });
   }
 });
+
+
+
+
+app.get("/publicaciones", async (req, res) => {
+  try {
+    const resultado = await pool.query(`
+      SELECT
+        p.*,
+        u.usuario,
+        r.nombre AS receta_nombre,
+        r.descripcion AS receta_descripcion,
+        r.porciones AS receta_porciones,
+        r.calorias AS receta_calorias,
+        r.proteinas AS receta_proteinas,
+        r.carbohidratos AS receta_carbohidratos,
+        r.grasas AS receta_grasas
+      FROM publicaciones p
+      JOIN usuarios u ON p.usuario_id = u.id
+      LEFT JOIN recetas r ON p.receta_id = r.id
+      ORDER BY p.fecha_creacion DESC, p.id DESC
+    `);
+
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error("Error obteniendo publicaciones:", error);
+    res.status(500).json({
+      error: "No se pudieron obtener las publicaciones."
+    });
+  }
+});
+
 
 app.delete('/publicaciones/:id', async (req, res) => {
   const { id } = req.params;
@@ -624,49 +1083,299 @@ app.get('/peso/:usuario', async (req, res) => {
   }
 });
 
-app.post("/agregar-alimento-diario", async (req, res) => {
-  console.log("📦 Datos recibidos en el Backend:", req.body);
 
+app.post("/agregar-alimento-diario", async (req, res) => {
   const {
     usuario,
     nombre,
+    cantidad = 100,
     calorias,
     proteinas,
     carbohidratos,
     grasas
   } = req.body;
 
+  const gramos = Number(cantidad);
+  const macros = [
+    calorias,
+    proteinas,
+    carbohidratos,
+    grasas
+  ].map(Number);
+
+  if (
+    typeof usuario !== "string" ||
+    !usuario.trim() ||
+    typeof nombre !== "string" ||
+    !nombre.trim() ||
+    !Number.isFinite(gramos) ||
+    gramos <= 0 ||
+    macros.some(n => !Number.isFinite(n) || n < 0)
+  ) {
+    return res.status(400).json({
+      error: "Datos de ingesta inválidos."
+    });
+  }
+
+  const [
+    caloriasConsumidas,
+    proteinasConsumidas,
+    carbohidratosConsumidos,
+    grasasConsumidas
+  ] = macros;
+
+  let cliente;
+
   try {
-    const existe = await pool.query(
-      `SELECT * FROM resumen_diario WHERE usuario=$1 AND fecha=CURRENT_DATE`,
-      [usuario]
+    cliente = await pool.connect();
+    await cliente.query("BEGIN");
+
+    // Obtener el usuario desde la base de datos.
+    const resultadoUsuario = await cliente.query(
+      "SELECT id FROM usuarios WHERE usuario = $1",
+      [usuario.trim()]
+    );
+
+    if (resultadoUsuario.rows.length === 0) {
+      await cliente.query("ROLLBACK");
+
+      return res.status(404).json({
+        error: "Usuario no encontrado."
+      });
+    }
+
+    const usuarioId = resultadoUsuario.rows[0].id;
+
+    // Bloquear las filas del usuario para evitar
+    // actualizaciones simultáneas inconsistentes.
+    await cliente.query(
+      "SELECT id FROM usuarios WHERE id = $1 FOR UPDATE",
+      [usuarioId]
+    );
+
+    // Mantener el funcionamiento actual del Home.
+    const existe = await cliente.query(
+      `SELECT id
+       FROM resumen_diario
+       WHERE usuario = $1 AND fecha = CURRENT_DATE`,
+      [usuario.trim()]
     );
 
     if (existe.rows.length === 0) {
-      await pool.query(
-        `INSERT INTO resumen_diario (usuario, calorias_consumidas, proteina, carbohidratos, grasa)
-         VALUES($1, $2, $3, $4, $5)`,
-        [usuario, calorias, proteinas, carbohidratos, grasas]
+      await cliente.query(
+        `INSERT INTO resumen_diario
+         (usuario, calorias_consumidas, proteina,
+          carbohidratos, grasa)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          usuario.trim(),
+          caloriasConsumidas,
+          proteinasConsumidas,
+          carbohidratosConsumidos,
+          grasasConsumidas
+        ]
       );
     } else {
-      await pool.query(
-        `UPDATE resumen_diario 
-         SET calorias_consumidas = calorias_consumidas + $2,
-             proteina = proteina + $3,
-             carbohidratos = carbohidratos + $4,
-             grasa = grasa + $5
-         WHERE usuario=$1 AND fecha=CURRENT_DATE`,
-        [usuario, calorias, proteinas, carbohidratos, grasas]
+      await cliente.query(
+        `UPDATE resumen_diario
+         SET calorias_consumidas =
+               COALESCE(calorias_consumidas, 0) + $2,
+             proteina = COALESCE(proteina, 0) + $3,
+             carbohidratos = COALESCE(carbohidratos, 0) + $4,
+             grasa = COALESCE(grasa, 0) + $5
+         WHERE usuario = $1 AND fecha = CURRENT_DATE`,
+        [
+          usuario.trim(),
+          caloriasConsumidas,
+          proteinasConsumidas,
+          carbohidratosConsumidos,
+          grasasConsumidas
+        ]
       );
     }
 
-    res.json({ mensaje: "✅ Alimento agregado correctamente." });
+    // Guardar el alimento consumido.
+    await registrarIngesta(cliente, {
+      usuarioId,
+      tipo: "alimento",
+      nombre: nombre.trim(),
+      cantidad: gramos,
+      unidad: "g",
+      calorias: caloriasConsumidas,
+      proteinas: proteinasConsumidas,
+      carbohidratos: carbohidratosConsumidos,
+      grasas: grasasConsumidas
+    });
+
+    await cliente.query("COMMIT");
+
+    res.status(201).json({
+      mensaje: "Alimento agregado correctamente."
+    });
 
   } catch (error) {
-    console.error("❌ Error en el backend:", error);
-    res.status(500).json({ error: "Error al guardar." });
+    if (cliente) {
+      await cliente.query("ROLLBACK");
+    }
+
+    console.error("Error registrando ingesta:", error);
+
+    res.status(500).json({
+      error: "No se pudo registrar el alimento."
+    });
+
+  } finally {
+    if (cliente) cliente.release();
   }
 });
+
+
+app.post("/agregar-receta-diario", async (req, res) => {
+  const { usuario_id, receta_id, porciones } = req.body;
+
+  const usuarioId = Number(usuario_id);
+  const recetaId = Number(receta_id);
+  const cantidad = Number(porciones);
+
+  if (
+    !Number.isInteger(usuarioId) || usuarioId <= 0 ||
+    !Number.isInteger(recetaId) || recetaId <= 0 ||
+    !Number.isFinite(cantidad) || cantidad <= 0
+  ) {
+    return res.status(400).json({
+      error: "Usuario, receta o porciones inválidas."
+    });
+  }
+
+  let cliente;
+
+  try {
+    cliente = await pool.connect();
+    await cliente.query("BEGIN");
+
+    // Obtener el usuario y bloquearlo para evitar
+    // actualizaciones simultáneas del resumen.
+    const resultadoUsuario = await cliente.query(
+      "SELECT id, usuario FROM usuarios WHERE id = $1 FOR UPDATE",
+      [usuarioId]
+    );
+
+    if (resultadoUsuario.rows.length === 0) {
+      await cliente.query("ROLLBACK");
+      return res.status(404).json({
+        error: "Usuario no encontrado."
+      });
+    }
+
+    const nombreUsuario = resultadoUsuario.rows[0].usuario;
+
+    // Obtener la receta directamente desde PostgreSQL.
+    const resultadoReceta = await cliente.query(
+      `SELECT id, nombre, porciones, calorias,
+              proteinas, carbohidratos, grasas
+       FROM recetas
+       WHERE id = $1`,
+      [recetaId]
+    );
+
+    if (resultadoReceta.rows.length === 0) {
+      await cliente.query("ROLLBACK");
+      return res.status(404).json({
+        error: "Receta no encontrada."
+      });
+    }
+
+    const receta = resultadoReceta.rows[0];
+
+    // La tabla recetas guarda los macros de la receta completa.
+    // Primero calculamos los macros de una porción.
+    const factor = cantidad / Number(receta.porciones);
+
+    const calorias = Number(receta.calorias) * factor;
+    const proteinas = Number(receta.proteinas) * factor;
+    const carbohidratos = Number(receta.carbohidratos) * factor;
+    const grasas = Number(receta.grasas) * factor;
+
+    // Actualizar el resumen diario existente.
+    const resumen = await cliente.query(
+      `SELECT id
+       FROM resumen_diario
+       WHERE usuario = $1 AND fecha = CURRENT_DATE`,
+      [nombreUsuario]
+    );
+
+    if (resumen.rows.length === 0) {
+      await cliente.query(
+        `INSERT INTO resumen_diario
+         (usuario, calorias_consumidas, proteina,
+          carbohidratos, grasa)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [
+          nombreUsuario,
+          calorias,
+          proteinas,
+          carbohidratos,
+          grasas
+        ]
+      );
+    } else {
+      await cliente.query(
+        `UPDATE resumen_diario
+         SET calorias_consumidas =
+               COALESCE(calorias_consumidas, 0) + $2,
+             proteina = COALESCE(proteina, 0) + $3,
+             carbohidratos = COALESCE(carbohidratos, 0) + $4,
+             grasa = COALESCE(grasa, 0) + $5
+         WHERE usuario = $1 AND fecha = CURRENT_DATE`,
+        [
+          nombreUsuario,
+          calorias,
+          proteinas,
+          carbohidratos,
+          grasas
+        ]
+      );
+    }
+
+    // Guardar qué receta consumió el usuario.
+    await registrarIngesta(cliente, {
+      usuarioId,
+      tipo: "receta",
+      recetaId,
+      nombre: receta.nombre,
+      cantidad,
+      unidad: "porciones",
+      calorias,
+      proteinas,
+      carbohidratos,
+      grasas
+    });
+
+    await cliente.query("COMMIT");
+
+    res.status(201).json({
+      mensaje: "Receta agregada a tu ingesta diaria.",
+      calorias,
+      proteinas,
+      carbohidratos,
+      grasas
+    });
+
+  } catch (error) {
+    if (cliente) await cliente.query("ROLLBACK");
+
+    console.error("Error agregando receta:", error);
+
+    res.status(500).json({
+      error: "No se pudo registrar la receta."
+    });
+
+  } finally {
+    if (cliente) cliente.release();
+  }
+});
+
+
 
 app.use(perfilRouter);
 
