@@ -220,3 +220,24 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.recetario-acciones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.recetario-mis-recetas {
+  background: white;
+  color: #28a745;
+  border: 1px solid #28a745;
+  border-radius: 6px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.recetario-mis-recetas:hover {
+  background: #eaf7ed;
+}

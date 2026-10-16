@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "./Recetario.css";
 import AgregarRecetaIngesta from "./AgregarRecetaIngesta";
 
-function Recetario() {
+function Recetario({ soloMias = false }) {
   const navigate = useNavigate();
 
   const [recetas, setRecetas] = useState([]);
@@ -13,6 +13,7 @@ function Recetario() {
   const [compartiendoId, setCompartiendoId] = useState(null);
   const [recetaParaCompartir, setRecetaParaCompartir] = useState(null);
   const [comentarioCompartir, setComentarioCompartir] = useState("");
+  
 
   useEffect(() => {
     const obtenerRecetas = async () => {
@@ -94,6 +95,19 @@ function Recetario() {
     }
     };
 
+    const usuarioSesion = (() => {
+        try {
+            return JSON.parse(localStorage.getItem("usuario"));
+        } catch {
+            return null;
+        }
+    })();
+
+    const recetasVisibles = soloMias
+        ? recetas.filter(
+            receta => receta.autor === usuarioSesion?.nombre
+            )
+        : recetas;
 
   return (
     <div className="recetario-page">
@@ -101,24 +115,47 @@ function Recetario() {
 
         <div className="recetario-header">
           <div>
-            <h1>Recetario de la comunidad</h1>
-            <p>Descubre y comparte recetas con otros usuarios.</p>
+            <h1>
+            {soloMias ? "Mis recetas" : "Recetario de la comunidad"}
+            </h1>
+            <p>
+            {soloMias
+                ? "Aquí encontrarás todas las recetas que has publicado."
+                : "Descubre y comparte recetas con otros usuarios."}
+            </p>
           </div>
 
-          <button onClick={() => navigate("/crear-receta")}>
-            + Crear receta
-          </button>
+        <div className="recetario-acciones">
+            <button
+                onClick={() => navigate("/crear-receta")}
+            >
+                + Crear receta
+            </button>
+
+            <button
+                className="recetario-mis-recetas"
+                onClick={() =>
+                    navigate(soloMias ? "/recetario" : "/mis-recetas")
+                }
+                >
+                {soloMias ? "Volver al Recetario" : "Mis recetas"}
+            </button>
+            </div>
         </div>
 
         {cargando && <p>Cargando recetas...</p>}
         {error && <p className="receta-error">{error}</p>}
 
-        {!cargando && !error && recetas.length === 0 && (
-          <p>Aún no hay recetas publicadas.</p>
+        {!cargando && !error && recetasVisibles.length === 0 && (
+            <p className="recetario-vacio">
+                {soloMias
+                ? "Todavía no has publicado ninguna receta."
+                : "Todavía no hay recetas publicadas."}
+            </p>
         )}
 
         <div className="recetario-grid">
-          {recetas.map(receta => (
+          {recetasVisibles.map(receta => (
             <div
                 className="recetario-card"
                 key={receta.id}
