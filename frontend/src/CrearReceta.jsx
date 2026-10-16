@@ -12,6 +12,8 @@ function CrearReceta() {
   const [descripcion, setDescripcion] = useState("");
   const [instrucciones, setInstrucciones] = useState("");
   const [porciones, setPorciones] = useState(1);
+  const [restricciones, setRestricciones] = useState([]);
+  const [otraRestriccion, setOtraRestriccion] = useState("");
 
   const [busqueda, setBusqueda] = useState("");
   const [resultados, setResultados] = useState([]);
@@ -20,8 +22,16 @@ function CrearReceta() {
   const [error, setError] = useState("");
   const [publicando, setPublicando] = useState(false);
   const [mensajePublicacion, setMensajePublicacion] = useState("");
+  
 
 
+const cambiarRestriccion = (restriccion) => {
+  setRestricciones(actuales =>
+    actuales.includes(restriccion)
+      ? actuales.filter(r => r !== restriccion)
+      : [...actuales, restriccion]
+  );
+};
 
 const publicarReceta = async () => {
     setMensajePublicacion("");
@@ -88,7 +98,13 @@ const publicarReceta = async () => {
             descripcion,
             instrucciones,
             porciones: Number(porciones),
-            ingredientes
+            ingredientes,
+            restricciones_compatibles: [
+                ...restricciones,
+                ...(otraRestriccion.trim()
+                ? [otraRestriccion.trim()]
+                : [])
+            ]
         })
         });
 
@@ -290,6 +306,46 @@ const publicarReceta = async () => {
               </div>
             ))}
           </div>
+
+
+            <section className="receta-seccion">
+                <h2>Restricciones compatibles</h2>
+
+                <p>
+                    Selecciona las restricciones alimentarias
+                    con las que es compatible tu receta.
+                </p>
+
+                <div className="receta-restricciones">
+                    {["Sin gluten", "Sin lactosa"].map(restriccion => (
+                    <label
+                        key={restriccion}
+                        className="receta-restriccion-opcion"
+                    >
+                        <input
+                        type="checkbox"
+                        checked={restricciones.includes(restriccion)}
+                        onChange={() => cambiarRestriccion(restriccion)}
+                        />
+                        <span>{restriccion}</span>
+                    </label>
+                    ))}
+                </div>
+
+                <label htmlFor="otra-restriccion">
+                    Otra restricción (opcional)
+                </label>
+
+                <input
+                    id="otra-restriccion"
+                    type="text"
+                    maxLength={60}
+                    placeholder="Ej: Sin frutos secos, sin huevo..."
+                    value={otraRestriccion}
+                    onChange={e => setOtraRestriccion(e.target.value)}
+                />
+            </section>
+
 
           <h3>Ingredientes agregados</h3>
 

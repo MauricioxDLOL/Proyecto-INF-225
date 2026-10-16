@@ -103,3 +103,20 @@
 .receta-agregar-diario:hover {
   background: #23963d;
 }
+
+.detalle-restricciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.detalle-restriccion {
+  background: #e5f5e5;
+  color: #278b43;
+  border: 1px solid #c4e6c4;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+}

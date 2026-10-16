@@ -94,6 +94,27 @@ function DetalleReceta() {
             + Añadir a mi ingesta diaria
         </button>
 
+
+        <div className="detalle-receta-card">
+            <h2>Restricciones compatibles</h2>
+
+            {receta.restricciones_compatibles?.length > 0 ? (
+                <div className="detalle-restricciones">
+                {receta.restricciones_compatibles.map((restriccion, index) => (
+                    <span
+                    key={index}
+                    className="detalle-restriccion"
+                    >
+                    {restriccion}
+                    </span>
+                ))}
+                </div>
+            ) : (
+                <p>No se han declarado restricciones compatibles.</p>
+            )}
+        </div>
+
+
         <div className="detalle-receta-card">
           <h2>Información nutricional</h2>
           <p>Valores estimados por porción</p>

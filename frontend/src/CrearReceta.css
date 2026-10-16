@@ -142,3 +142,27 @@
     align-items: flex-start;
   }
 }
+
+.receta-restricciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 15px 0 20px;
+}
+
+.receta-restriccion-opcion {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 15px;
+  border: 1px solid #d5e5d5;
+  border-radius: 8px;
+  background: #f4faf3;
+  cursor: pointer;
+}
+
+.receta-restriccion-opcion input {
+  width: auto;
+  margin: 0;
+  accent-color: #2db84d;
+}

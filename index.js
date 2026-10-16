@@ -130,6 +130,12 @@ const inicializarDB = async () => {
         fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    await pool.query(`
+      ALTER TABLE recetas
+      ADD COLUMN IF NOT EXISTS restricciones_compatibles
+      TEXT[] NOT NULL DEFAULT '{}'
+    `);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS receta_ingredientes (
@@ -436,7 +442,8 @@ app.post('/recetas', async (req, res) => {
     descripcion,
     instrucciones,
     porciones,
-    ingredientes
+    ingredientes,
+    restricciones_compatibles = []
   } = req.body;
 
   // Validar los datos generales.
@@ -451,6 +458,20 @@ app.post('/recetas', async (req, res) => {
   ) {
     return res.status(400).json({
       error: 'Faltan datos obligatorios de la receta.'
+    });
+  }
+
+  if (
+    !Array.isArray(restricciones_compatibles) ||
+    restricciones_compatibles.length > 15 ||
+    restricciones_compatibles.some(r =>
+      typeof r !== "string" ||
+      !r.trim() ||
+      r.trim().length > 60
+    )
+  ) {
+    return res.status(400).json({
+      error: "Restricciones compatibles inválidas."
     });
   }
 
@@ -522,8 +543,8 @@ app.post('/recetas', async (req, res) => {
     const resultadoReceta = await cliente.query(
       `INSERT INTO recetas
        (usuario_id, nombre, descripcion, instrucciones,
-        porciones, calorias, proteinas, carbohidratos, grasas)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        porciones, calorias, proteinas, carbohidratos, grasas, restricciones_compatibles)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id`,
       [
         usuarioId,
@@ -534,7 +555,8 @@ app.post('/recetas', async (req, res) => {
         totales.calorias,
         totales.proteinas,
         totales.carbohidratos,
-        totales.grasas
+        totales.grasas,
+        restricciones_compatibles.map(r => r.trim())
       ]
     );
 
@@ -600,7 +622,8 @@ app.get('/recetas', async (req, res) => {
         r.grasas,
         r.imagen,
         r.fecha_creacion,
-        u.usuario AS autor
+        u.usuario AS autor,
+        r.restricciones_compatibles
       FROM recetas r
       JOIN usuarios u ON r.usuario_id = u.id
       ORDER BY r.fecha_creacion DESC, r.id DESC
@@ -641,7 +664,8 @@ app.get('/recetas/:id', async (req, res) => {
         r.grasas,
         r.imagen,
         r.fecha_creacion,
-        u.usuario AS autor
+        u.usuario AS autor,
+        r.restricciones_compatibles
        FROM recetas r
        JOIN usuarios u ON r.usuario_id = u.id
        WHERE r.id = $1`,
