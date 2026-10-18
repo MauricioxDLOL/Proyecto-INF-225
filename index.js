@@ -47,7 +47,8 @@ const inicializarDB = async () => {
         tipo_actividad VARCHAR(255),
         intensidad VARCHAR(50),
         duracion_minutos INTEGER,
-        calorias_quemadas NUMERIC(8, 2)
+        calorias_quemadas NUMERIC(8, 2),
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -88,6 +89,23 @@ const inicializarDB = async () => {
       )
     `);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS recetas (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+        nombre TEXT NOT NULL,
+        descripcion TEXT,
+        instrucciones TEXT NOT NULL,
+        porciones INTEGER NOT NULL CHECK (porciones > 0),
+        calorias NUMERIC DEFAULT 0,
+        proteinas NUMERIC DEFAULT 0,
+        carbohidratos NUMERIC DEFAULT 0,
+        grasas NUMERIC DEFAULT 0,
+        imagen TEXT,
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     await pool.query(`ALTER TABLE publicaciones ADD COLUMN IF NOT EXISTS imagen TEXT`);
 
     await pool.query(`
@@ -114,22 +132,7 @@ const inicializarDB = async () => {
       )
     `);
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS recetas (
-        id SERIAL PRIMARY KEY,
-        usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
-        nombre TEXT NOT NULL,
-        descripcion TEXT,
-        instrucciones TEXT NOT NULL,
-        porciones INTEGER NOT NULL CHECK (porciones > 0),
-        calorias NUMERIC DEFAULT 0,
-        proteinas NUMERIC DEFAULT 0,
-        carbohidratos NUMERIC DEFAULT 0,
-        grasas NUMERIC DEFAULT 0,
-        imagen TEXT,
-        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    
     
     await pool.query(`
       ALTER TABLE recetas
@@ -380,29 +383,57 @@ app.get('/resumen-diario/:id', async (req, res) => {
       [req.params.id]
     );
 
-    if (result.rows.length === 0) {
-      return res.json({ calorias_consumidas: 0, proteina: 0, carbohidratos: 0, grasa: 0, agua_consumida: 0, racha: 0 });
-    }
-    res.json(result.rows[0]);
+    const quemadas = await pool.query(
+      `SELECT COALESCE(SUM(calorias_quemadas), 0) AS total
+       FROM actividad_fisica
+       WHERE usuario_id = $1 AND DATE(fecha) = CURRENT_DATE`,
+      [req.params.id]
+    );
+
+    const base = result.rows[0] || {
+      calorias_consumidas: 0, proteina: 0, carbohidratos: 0,
+      grasa: 0, agua_consumida: 0, racha: 0
+    };
+
+    const consumidas = Number(base.calorias_consumidas) || 0;
+    const quemadasTotal = Number(quemadas.rows[0].total) || 0;
+
+    res.json({
+      ...base,
+      calorias_consumidas: consumidas,
+      calorias_quemadas: quemadasTotal,
+      calorias_netas: consumidas - quemadasTotal
+    });
   } catch (err) {
+    console.error(err);
     res.status(500).send('Error al obtener resumen diario');
   }
 });
 
 app.post('/api/actividades', async (req, res) => {
   const { usuario_id, tipo_actividad, intensidad, duracion_minutos } = req.body;
-  if (!tipo_actividad || !duracion_minutos) return res.status(400).json({ error: 'El tipo de actividad y la duración son obligatorios.' });
+  if (!tipo_actividad || !duracion_minutos) {
+    return res.status(400).json({ error: 'El tipo de actividad y la duración son obligatorios.' });
+  }
 
   try {
-    let factorIntensidad = intensidad === 'media' ? 8 : intensidad === 'alta' ? 12 : 5;
-    const calorias_quemadas = duracion_minutos * factorIntensidad;
+    
+    const userRes = await pool.query('SELECT peso FROM usuarios WHERE id = $1', [usuario_id]);
+    const pesoKg = Number(userRes.rows[0]?.peso) || 60; // fallback 60 kg
+
+    const MET = { baja: 3, media: 6, alta: 9 }[intensidad] || 3;
+    const calorias_quemadas = Math.round(MET * pesoKg * (Number(duracion_minutos) / 60));
 
     const result = await pool.query(
-      `INSERT INTO actividad_fisica (usuario_id, tipo_actividad, intensidad, duracion_minutos, calorias_quemadas) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      `INSERT INTO actividad_fisica
+         (usuario_id, tipo_actividad, intensidad, duracion_minutos, calorias_quemadas, fecha)
+       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+       RETURNING *`,
       [usuario_id, tipo_actividad, intensidad, duracion_minutos, calorias_quemadas]
     );
     res.status(201).json(result.rows[0]);
-  } catch (err) {
+  }catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Error al guardar la actividad física' });
   }
 });

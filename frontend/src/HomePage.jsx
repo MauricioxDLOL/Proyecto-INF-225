@@ -85,6 +85,8 @@ function HomePage() {
     pesoMeta: datosUsuario.peso_meta || "-",
 
     caloriasConsumidas: Number(resumenDiario.calorias_consumidas) || 0,
+    caloriasQuemadas: Number(resumenDiario.calorias_quemadas) || 0,
+    caloriasNetas: Number(resumenDiario.calorias_netas) || 0,
     proteina: Number(resumenDiario.proteina) || 0,
     carbohidratos: Number(resumenDiario.carbohidratos) || 0,
     grasa: Number(resumenDiario.grasa) || 0,
@@ -101,9 +103,9 @@ function HomePage() {
 
   // Cálculos de progreso
   const tieneMetas = usuario.metaCalorica || usuario.metaproteina || usuario.metacarbohidratos || usuario.metaAgua;
-  const caloriasRestantes = usuario.metaCalorica ? usuario.metaCalorica - usuario.caloriasConsumidas : "-";
+  const caloriasRestantes = usuario.metaCalorica ? usuario.metaCalorica - usuario.caloriasNetas : "-";
 
-  const porcentajeCalorias = usuario.metaCalorica ? Math.min(100, Math.round((usuario.caloriasConsumidas / usuario.metaCalorica) * 100)) : 0;
+  const porcentajeCalorias = usuario.metaCalorica ? Math.min(100, Math.round((usuario.caloriasNetas / usuario.metaCalorica) * 100)) : 0;
   const porcentajeProteina = usuario.metaproteina ? Math.min(100, Math.round((usuario.proteina / usuario.metaproteina) * 100)) : 0;
   const porcentajeCarbohidratos = usuario.metacarbohidratos ? Math.min(100, Math.round((usuario.carbohidratos / usuario.metacarbohidratos) * 100)) : 0;
   const porcentajeAgua = usuario.metaAgua ? Math.min(100, Math.round((usuario.aguaConsumida / usuario.metaAgua) * 100)) : 0;
@@ -154,6 +156,14 @@ function HomePage() {
       setTipoActividad("");
       setDuracion("");
       setIntensidad("baja");
+
+   
+      const resumenRes = await fetch(`http://localhost:3000/resumen-diario/${usuario.id}`);
+      if (resumenRes.ok) {
+        const nuevoResumen = await resumenRes.json();
+        setResumenDiario(nuevoResumen);
+      }
+
 
     } catch (err) {
       setError(err.message);
