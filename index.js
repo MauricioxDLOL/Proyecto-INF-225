@@ -639,32 +639,57 @@ app.post('/recetas', async (req, res) => {
 
 
 app.get('/recetas', async (req, res) => {
+
+  const { nombre, restriccion, calorias_max } = req.query;
+
+  let sqlQuery = `
+    SELECT
+      r.id,
+      r.nombre,
+      r.descripcion,
+      r.instrucciones,
+      r.porciones,
+      r.calorias,
+      r.proteinas,
+      r.carbohidratos,
+      r.grasas,
+      r.imagen,
+      r.fecha_creacion,
+      u.usuario AS autor,
+      r.restricciones_compatibles
+    FROM recetas r
+    JOIN usuarios u ON r.usuario_id = u.id
+    WHERE 1=1
+  `;
+  
+  const values = [];
+  let paramIndex = 1;
+
+  if (nombre) {
+    sqlQuery += ` AND r.nombre ILIKE $${paramIndex}`;
+    values.push(`%${nombre}%`);
+    paramIndex++;
+  }
+
+  if (restriccion) {
+    sqlQuery += ` AND $${paramIndex} = ANY(r.restricciones_compatibles)`;
+    values.push(restriccion);
+    paramIndex++;
+  }
+
+  if (calorias_max) {
+    sqlQuery += ` AND r.calorias <= $${paramIndex}`;
+    values.push(Number(calorias_max));
+    paramIndex++;
+  }
+
+  sqlQuery += ` ORDER BY r.fecha_creacion DESC, r.id DESC`;
+
   try {
-    const resultado = await pool.query(`
-      SELECT
-        r.id,
-        r.nombre,
-        r.descripcion,
-        r.instrucciones,
-        r.porciones,
-        r.calorias,
-        r.proteinas,
-        r.carbohidratos,
-        r.grasas,
-        r.imagen,
-        r.fecha_creacion,
-        u.usuario AS autor,
-        r.restricciones_compatibles
-      FROM recetas r
-      JOIN usuarios u ON r.usuario_id = u.id
-      ORDER BY r.fecha_creacion DESC, r.id DESC
-    `);
-
+    const resultado = await pool.query(sqlQuery, values);
     res.json(resultado.rows);
-
   } catch (error) {
-    console.error("Error obteniendo recetas:", error);
-
+    console.error("Error obteniendo recetas filtradas:", error);
     res.status(500).json({
       error: "No se pudieron obtener las recetas."
     });

@@ -316,21 +316,27 @@ const publicarReceta = async () => {
                     con las que es compatible tu receta.
                 </p>
 
-                <div className="receta-restricciones">
-                    {["Sin gluten", "Sin lactosa"].map(restriccion => (
+                  <div className="receta-restricciones">
+                    {[
+                      { etiqueta: "Sin Gluten", valor: "Gluten" },
+                      { etiqueta: "Sin Lactosa", valor: "Lactosa" },
+                      { etiqueta: "Vegano", valor: "vegano" },
+                      { etiqueta: "Vegetariano", valor: "vegetariano" },
+                      { etiqueta: "Keto", valor: "keto" }
+                    ].map(({ etiqueta, valor }) => (
                     <label
-                        key={restriccion}
+                        key={valor}
                         className="receta-restriccion-opcion"
                     >
                         <input
                         type="checkbox"
-                        checked={restricciones.includes(restriccion)}
-                        onChange={() => cambiarRestriccion(restriccion)}
+                        checked={restricciones.includes(valor)}
+                        onChange={() => cambiarRestriccion(valor)}
                         />
-                        <span>{restriccion}</span>
+                        <span>{etiqueta}</span>
                     </label>
                     ))}
-                </div>
+                  </div>
 
                 <label htmlFor="otra-restriccion">
                     Otra restricción (opcional)
