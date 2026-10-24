@@ -53,6 +53,12 @@ const inicializarDB = async () => {
     `);
 
     await pool.query(`
+      ALTER TABLE actividad_fisica
+      ADD COLUMN IF NOT EXISTS fecha
+      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    `);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS resumen_diario (
         id SERIAL PRIMARY KEY,
         usuario TEXT,
