@@ -1,25 +1,20 @@
-# Grupo 12
+# Grupo 02
 
-**Profesora:** Luz Mairet Chourio\
+**Profesora:** Anelis Pereira\
 **Ayudante:** Benjamín Daza
 
 **Integrantes:**
 
-* Pablo Gutiérrez - 202473610-8
-* Danae Ojeda - 202373516-7
-* Catalina Diaz - 202473507-1
+* Enrique Manzano - 202330530-8
+* Cristofer Rojas Medina - 202373543-4
+* Fernanda Pérez - 202210108-3
+* Tomás Salinas - 202330528-6
 * Nicolas Matta - 201956634-2
 * Mauricio Godoy - 202304014-2
 
 ## Videos
 
-[Video Hito 3](https://usmcl-my.sharepoint.com/:v:/g/personal/cdiazc_usm_cl/IQBAFYKKWKgwRYmjBvAY-MXfAShSjlied98U5Tgc55VyuIA?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=wOMOgU)
-
-[Video Hito 5](https://usmcl-my.sharepoint.com/:v:/g/personal/cdiazc_usm_cl/IQDk4CdGDWfvR5dxSVhLSagpAYATsmL4toP3qXoblwLSnyU?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=oDoAtf)
-
-## Documentacion
-
-La documentacion de este proyecto se encuentra en la [Wiki](../../wikis/home)
+[Video Hito 3](https://youtu.be/PjLKx8o2MZk)
 
 ## Tecnologías utilizadas
 
