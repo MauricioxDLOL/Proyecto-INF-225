@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./DetalleReceta.css";
@@ -12,6 +11,21 @@ function DetalleReceta() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [mostrarIngesta, setMostrarIngesta] = useState(false);
+
+  // RS004: Me gusta y comentarios
+  const [likes, setLikes] = useState({ total: 0, meGusta: false });
+  const [comentarios, setComentarios] = useState([]);
+  const [textoComentario, setTextoComentario] = useState("");
+  const [enviandoComentario, setEnviandoComentario] = useState(false);
+  const [errorSocial, setErrorSocial] = useState("");
+
+  const obtenerUsuarioSesion = () => {
+    try {
+      return JSON.parse(localStorage.getItem("usuario"));
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
     const obtenerReceta = async () => {
@@ -39,6 +53,105 @@ function DetalleReceta() {
 
     obtenerReceta();
   }, [id]);
+
+  useEffect(() => {
+    const cargarInteraccion = async () => {
+      const usuario = obtenerUsuarioSesion();
+      const query = usuario?.nombre
+        ? `?usuario=${encodeURIComponent(usuario.nombre)}`
+        : "";
+
+      try {
+        const [respLikes, respComentarios] = await Promise.all([
+          fetch(`http://localhost:3000/recetas/${id}/likes${query}`),
+          fetch(`http://localhost:3000/recetas/${id}/comentarios`)
+        ]);
+
+        if (respLikes.ok) setLikes(await respLikes.json());
+        if (respComentarios.ok) setComentarios(await respComentarios.json());
+      } catch {
+        setErrorSocial("No se pudo cargar la interacción social.");
+      }
+    };
+
+    cargarInteraccion();
+  }, [id]);
+
+  const alternarMeGusta = async () => {
+    const usuario = obtenerUsuarioSesion();
+    setErrorSocial("");
+
+    if (!usuario?.nombre) {
+      setErrorSocial("Debes iniciar sesión para dar Me gusta.");
+      return;
+    }
+
+    try {
+      const respuesta = await fetch(
+        `http://localhost:3000/recetas/${id}/likes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ usuario: usuario.nombre })
+        }
+      );
+      const data = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(data.error || "Error al registrar el Me gusta.");
+      }
+      setLikes(data);
+    } catch (err) {
+      setErrorSocial(err.message);
+    }
+  };
+
+  const enviarComentario = async () => {
+    const usuario = obtenerUsuarioSesion();
+    setErrorSocial("");
+
+    if (!usuario?.nombre) {
+      setErrorSocial("Debes iniciar sesión para comentar.");
+      return;
+    }
+    if (!textoComentario.trim()) {
+      setErrorSocial("Escribe un comentario antes de enviarlo.");
+      return;
+    }
+
+    setEnviandoComentario(true);
+    try {
+      const respuesta = await fetch(
+        `http://localhost:3000/recetas/${id}/comentarios`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            usuario: usuario.nombre,
+            texto: textoComentario
+          })
+        }
+      );
+      const data = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(data.error || "Error al agregar el comentario.");
+      }
+
+      setComentarios(prev => [data, ...prev]);
+      setTextoComentario("");
+    } catch (err) {
+      setErrorSocial(err.message);
+    } finally {
+      setEnviandoComentario(false);
+    }
+  };
+
+  const formatoFecha = (fecha) =>
+    new Date(fecha).toLocaleString("es-CL", {
+      dateStyle: "short",
+      timeStyle: "short"
+    });
 
   const formato = (valor) => Number(valor || 0).toFixed(1);
 
@@ -85,6 +198,18 @@ function DetalleReceta() {
           <p>
             <strong>Porciones:</strong> {receta.porciones}
           </p>
+        </div>
+
+        <div className="detalle-receta-card detalle-social">
+          <button
+            className={`detalle-megusta ${likes.meGusta ? "activo" : ""}`}
+            onClick={alternarMeGusta}
+          >
+            {likes.meGusta ? "♥" : "♡"} Me gusta
+          </button>
+          <span className="detalle-megusta-contador">
+            {likes.total} {likes.total === 1 ? "persona" : "personas"}
+          </span>
         </div>
 
         <button
@@ -160,6 +285,45 @@ function DetalleReceta() {
           <p className="detalle-instrucciones">
             {receta.instrucciones}
           </p>
+        </div>
+
+        <div className="detalle-receta-card">
+          <h2>Comentarios ({comentarios.length})</h2>
+
+          <div className="detalle-comentar">
+            <textarea
+              className="detalle-comentar-texto"
+              placeholder="Escribe un comentario..."
+              value={textoComentario}
+              maxLength={1000}
+              onChange={(e) => setTextoComentario(e.target.value)}
+            />
+            <button
+              className="detalle-comentar-boton"
+              onClick={enviarComentario}
+              disabled={enviandoComentario}
+            >
+              {enviandoComentario ? "Enviando..." : "Comentar"}
+            </button>
+          </div>
+
+          {errorSocial && <p className="detalle-social-error">{errorSocial}</p>}
+
+          {comentarios.length === 0 ? (
+            <p className="detalle-sin-comentarios">Aún no hay comentarios.</p>
+          ) : (
+            <div className="detalle-comentarios">
+              {comentarios.map(c => (
+                <div className="detalle-comentario" key={c.id}>
+                  <div className="detalle-comentario-header">
+                    <strong>{c.autor}</strong>
+                    <span>{formatoFecha(c.fecha)}</span>
+                  </div>
+                  <p>{c.texto}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>

@@ -62,12 +62,43 @@ export default function Comunidad() {
   const cargarPublicaciones = async () => {
     setCargando(true);
     try {
-      const respuesta = await fetch("http://localhost:3000/publicaciones");
+      const query = usuario?.nombre
+        ? `?usuario=${encodeURIComponent(usuario.nombre)}`
+        : "";
+      const respuesta = await fetch(`http://localhost:3000/publicaciones${query}`);
       const data = await respuesta.json();
       if (respuesta.ok) setPublicaciones(data);
     } catch {
     } finally {
       setCargando(false);
+    }
+  };
+
+  const alternarMeGusta = async (pub) => {
+    if (!usuario?.nombre) {
+      alert("Debes iniciar sesión para dar Me gusta.");
+      return;
+    }
+    try {
+      const respuesta = await fetch(
+        `http://localhost:3000/publicaciones/${pub.id}/likes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ usuario: usuario.nombre }),
+        }
+      );
+      const data = await respuesta.json();
+      if (respuesta.ok) {
+        setPublicaciones(prev =>
+          prev.map(p =>
+            p.id === pub.id
+              ? { ...p, likes_total: data.total, me_gusta: data.meGusta }
+              : p
+          )
+        );
+      }
+    } catch {
     }
   };
 
@@ -391,6 +422,12 @@ export default function Comunidad() {
                       <img src={pub.imagen} alt="publicación" className="com-pubImagen" />
                     )}
                     <div className="com-pubFooter">
+                      <button
+                        className={`com-btnMeGusta ${pub.me_gusta ? "activo" : ""}`}
+                        onClick={() => alternarMeGusta(pub)}
+                      >
+                        {pub.me_gusta ? "♥" : "♡"} Me gusta · {pub.likes_total || 0}
+                      </button>
                       <button className="com-btnComentarios" onClick={() => abrirComentarios(pub)}>
                         💬 Comentarios
                       </button>

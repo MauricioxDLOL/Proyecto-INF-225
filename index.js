@@ -193,6 +193,36 @@ await pool.query(`
 `);
 
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS recetas_likes (
+        id SERIAL PRIMARY KEY,
+        receta_id INTEGER NOT NULL REFERENCES recetas(id) ON DELETE CASCADE,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+        fecha TIMESTAMP DEFAULT NOW(),
+        UNIQUE (receta_id, usuario_id)
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS recetas_comentarios (
+        id SERIAL PRIMARY KEY,
+        receta_id INTEGER NOT NULL REFERENCES recetas(id) ON DELETE CASCADE,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+        texto TEXT NOT NULL,
+        fecha TIMESTAMP DEFAULT NOW()
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS publicaciones_likes (
+        id SERIAL PRIMARY KEY,
+        publicacion_id INTEGER NOT NULL REFERENCES publicaciones(id) ON DELETE CASCADE,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id),
+        fecha TIMESTAMP DEFAULT NOW(),
+        UNIQUE (publicacion_id, usuario_id)
+      )
+    `);
+
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS tipo_dieta TEXT`);
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intolerancias TEXT`);
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS alimentos_restringidos TEXT`);
@@ -807,6 +837,154 @@ async function registrarIngesta(cliente, datos) {
 }
 
 
+// ===== RS004: Interacción social en recetas (Me gusta y comentarios) =====
+app.get('/recetas/:id/likes', async (req, res) => {
+  const recetaId = Number(req.params.id);
+  const usuario = req.query.usuario;
+
+  if (!Number.isInteger(recetaId) || recetaId <= 0) {
+    return res.status(400).json({ error: 'ID de receta inválido.' });
+  }
+
+  try {
+    const total = await pool.query(
+      'SELECT COUNT(*)::int AS total FROM recetas_likes WHERE receta_id = $1',
+      [recetaId]
+    );
+
+    let meGusta = false;
+    if (usuario) {
+      const propio = await pool.query(
+        `SELECT 1 FROM recetas_likes l
+         JOIN usuarios u ON u.id = l.usuario_id
+         WHERE l.receta_id = $1 AND u.usuario = $2`,
+        [recetaId, usuario]
+      );
+      meGusta = propio.rows.length > 0;
+    }
+
+    res.json({ total: total.rows[0].total, meGusta });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener los Me gusta.' });
+  }
+});
+
+app.post('/recetas/:id/likes', async (req, res) => {
+  const recetaId = Number(req.params.id);
+  const { usuario } = req.body;
+
+  if (!Number.isInteger(recetaId) || recetaId <= 0) {
+    return res.status(400).json({ error: 'ID de receta inválido.' });
+  }
+  if (!usuario) {
+    return res.status(401).json({ error: 'Debes iniciar sesión para dar Me gusta.' });
+  }
+
+  try {
+    const usuarioResult = await pool.query('SELECT id FROM usuarios WHERE usuario = $1', [usuario]);
+    if (usuarioResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Usuario no encontrado.' });
+    }
+    const usuarioId = usuarioResult.rows[0].id;
+
+    const receta = await pool.query('SELECT id FROM recetas WHERE id = $1', [recetaId]);
+    if (receta.rows.length === 0) {
+      return res.status(404).json({ error: 'Receta no encontrada.' });
+    }
+
+    const existente = await pool.query(
+      'SELECT id FROM recetas_likes WHERE receta_id = $1 AND usuario_id = $2',
+      [recetaId, usuarioId]
+    );
+
+    let meGusta;
+    if (existente.rows.length > 0) {
+      await pool.query('DELETE FROM recetas_likes WHERE id = $1', [existente.rows[0].id]);
+      meGusta = false;
+    } else {
+      await pool.query(
+        'INSERT INTO recetas_likes (receta_id, usuario_id) VALUES ($1, $2)',
+        [recetaId, usuarioId]
+      );
+      meGusta = true;
+    }
+
+    const total = await pool.query(
+      'SELECT COUNT(*)::int AS total FROM recetas_likes WHERE receta_id = $1',
+      [recetaId]
+    );
+
+    res.json({ total: total.rows[0].total, meGusta });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al registrar el Me gusta.' });
+  }
+});
+
+app.get('/recetas/:id/comentarios', async (req, res) => {
+  const recetaId = Number(req.params.id);
+
+  if (!Number.isInteger(recetaId) || recetaId <= 0) {
+    return res.status(400).json({ error: 'ID de receta inválido.' });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT c.id, c.texto, c.fecha, u.usuario AS autor
+       FROM recetas_comentarios c
+       JOIN usuarios u ON u.id = c.usuario_id
+       WHERE c.receta_id = $1
+       ORDER BY c.fecha DESC, c.id DESC`,
+      [recetaId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al obtener los comentarios.' });
+  }
+});
+
+app.post('/recetas/:id/comentarios', async (req, res) => {
+  const recetaId = Number(req.params.id);
+  const { usuario, texto } = req.body;
+
+  if (!Number.isInteger(recetaId) || recetaId <= 0) {
+    return res.status(400).json({ error: 'ID de receta inválido.' });
+  }
+  if (!usuario) {
+    return res.status(401).json({ error: 'Debes iniciar sesión para comentar.' });
+  }
+  if (typeof texto !== 'string' || !texto.trim() || texto.trim().length > 1000) {
+    return res.status(400).json({ error: 'Escribe un comentario de máximo 1000 caracteres.' });
+  }
+
+  try {
+    const usuarioResult = await pool.query('SELECT id FROM usuarios WHERE usuario = $1', [usuario]);
+    if (usuarioResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Usuario no encontrado.' });
+    }
+
+    const receta = await pool.query('SELECT id FROM recetas WHERE id = $1', [recetaId]);
+    if (receta.rows.length === 0) {
+      return res.status(404).json({ error: 'Receta no encontrada.' });
+    }
+
+    const insertado = await pool.query(
+      `INSERT INTO recetas_comentarios (receta_id, usuario_id, texto)
+       VALUES ($1, $2, $3)
+       RETURNING id, texto, fecha`,
+      [recetaId, usuarioResult.rows[0].id, texto.trim()]
+    );
+
+    res.status(201).json({ ...insertado.rows[0], autor: usuario });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al agregar el comentario.' });
+  }
+});
+// ===== Fin RS004 =====
+
 app.post('/publicaciones', async (req, res) => {
   const { titulo, texto, usuario, imagen } = req.body;
   try {
@@ -911,12 +1089,19 @@ app.get("/publicaciones", async (req, res) => {
         r.calorias AS receta_calorias,
         r.proteinas AS receta_proteinas,
         r.carbohidratos AS receta_carbohidratos,
-        r.grasas AS receta_grasas
+        r.grasas AS receta_grasas,
+        (SELECT COUNT(*)::int FROM publicaciones_likes pl
+          WHERE pl.publicacion_id = p.id) AS likes_total,
+        EXISTS (
+          SELECT 1 FROM publicaciones_likes pl
+          JOIN usuarios uu ON uu.id = pl.usuario_id
+          WHERE pl.publicacion_id = p.id AND uu.usuario = $1
+        ) AS me_gusta
       FROM publicaciones p
       JOIN usuarios u ON p.usuario_id = u.id
       LEFT JOIN recetas r ON p.receta_id = r.id
       ORDER BY p.fecha_creacion DESC, p.id DESC
-    `);
+    `, [req.query.usuario || null]);
 
     res.json(resultado.rows);
   } catch (error) {
@@ -927,6 +1112,59 @@ app.get("/publicaciones", async (req, res) => {
   }
 });
 
+
+// Me gusta en publicaciones de la comunidad (toggle)
+app.post('/publicaciones/:id/likes', async (req, res) => {
+  const publicacionId = Number(req.params.id);
+  const { usuario } = req.body;
+
+  if (!Number.isInteger(publicacionId) || publicacionId <= 0) {
+    return res.status(400).json({ error: 'ID de publicación inválido.' });
+  }
+  if (!usuario) {
+    return res.status(401).json({ error: 'Debes iniciar sesión para dar Me gusta.' });
+  }
+
+  try {
+    const usuarioResult = await pool.query('SELECT id FROM usuarios WHERE usuario = $1', [usuario]);
+    if (usuarioResult.rows.length === 0) {
+      return res.status(401).json({ error: 'Usuario no encontrado.' });
+    }
+    const usuarioId = usuarioResult.rows[0].id;
+
+    const pub = await pool.query('SELECT id FROM publicaciones WHERE id = $1', [publicacionId]);
+    if (pub.rows.length === 0) {
+      return res.status(404).json({ error: 'Publicación no encontrada.' });
+    }
+
+    const existente = await pool.query(
+      'SELECT id FROM publicaciones_likes WHERE publicacion_id = $1 AND usuario_id = $2',
+      [publicacionId, usuarioId]
+    );
+
+    let meGusta;
+    if (existente.rows.length > 0) {
+      await pool.query('DELETE FROM publicaciones_likes WHERE id = $1', [existente.rows[0].id]);
+      meGusta = false;
+    } else {
+      await pool.query(
+        'INSERT INTO publicaciones_likes (publicacion_id, usuario_id) VALUES ($1, $2)',
+        [publicacionId, usuarioId]
+      );
+      meGusta = true;
+    }
+
+    const total = await pool.query(
+      'SELECT COUNT(*)::int AS total FROM publicaciones_likes WHERE publicacion_id = $1',
+      [publicacionId]
+    );
+
+    res.json({ total: total.rows[0].total, meGusta });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al registrar el Me gusta.' });
+  }
+});
 
 app.delete('/publicaciones/:id', async (req, res) => {
   const { id } = req.params;
