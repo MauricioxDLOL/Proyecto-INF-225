@@ -29,7 +29,7 @@ export default function Navbar() {
 return (
     <header className="global-header">
       <div className="top-bar">
-        <Link to="/" className="logo">Fatsecret</Link>
+        <Link to="/" className="logo">Healthics</Link>
 
         <nav className="main-nav">
           <Link to="/" className={isActive("/")}>Inicio</Link>

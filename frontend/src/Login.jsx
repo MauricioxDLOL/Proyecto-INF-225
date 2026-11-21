@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const teal = "#3db39e";
+const teal = "#2db84d";
 
 export default function Login() {
   const [usuario, setUsuario] = useState("");
@@ -43,7 +43,7 @@ export default function Login() {
         <div style={styles.header}>
           <div style={styles.logo}>
             <span style={styles.logoIcon}>🔒</span>
-            <span style={styles.logoText}>fatsecret</span>
+            <span style={styles.logoText}>Healthics</span>
           </div>
           <span style={styles.headerTitle}>Iniciar Sesión</span>
         </div>
@@ -94,7 +94,7 @@ export default function Login() {
 
 const styles = {
   page: {
-    minHeight: "100vh", backgroundColor: "#f5f5f0",
+    minHeight: "100vh", backgroundColor: "#eef5ec",
     display: "flex", justifyContent: "center", alignItems: "center",
     fontFamily: "'Segoe UI', Arial, sans-serif", fontSize: 14, color: "#333",
   },
@@ -107,7 +107,7 @@ const styles = {
   logo: { display: "flex", alignItems: "center", gap: 8 },
   logoIcon: { fontSize: 22 },
   logoText: { color: teal, fontSize: 22, fontWeight: "bold", fontStyle: "italic" },
-  headerTitle: { color: "#7ab", fontSize: 18 },
+  headerTitle: { color: teal, fontSize: 18 },
   divider: { height: 1, backgroundColor: "#e0e0e0" },
   body: { padding: "24px 32px 32px" },
   campo: { marginBottom: 16 },

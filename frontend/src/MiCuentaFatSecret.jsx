@@ -101,9 +101,9 @@ export default function MiCuentaFatSecret() {
         <div style={styles.header}>
           <div style={styles.logo}>
             <span style={styles.logoIcon}>🔒</span>
-            <span style={styles.logoText}>fatsecret</span>
+            <span style={styles.logoText}>Healthics</span>
           </div>
-          <span style={styles.headerTitle}>Mi cuenta FatSecret</span>
+          <span style={styles.headerTitle}>Mi cuenta Healthics</span>
         </div>
 
         <div style={styles.divider} />
@@ -351,7 +351,7 @@ export default function MiCuentaFatSecret() {
             <span style={styles.linkAzul}>Términos y Condiciones</span>{" "}
             y la{" "}
             <span style={styles.linkAzul}>Política de Privacidad</span>{" "}
-            de FatSecret
+            de Healthics
           </p>
 
           {/* Botones */}
@@ -427,13 +427,13 @@ function ErrorMsg({ children }) {
 
 /* ─── Estilos ─── */
 
-const teal = "#3db39e";
-const tealDark = "#2a8a7a";
+const teal = "#2db84d";
+const tealDark = "#259e40";
 
 const styles = {
   page: {
     minHeight: "100vh",
-    backgroundColor: "#f5f5f0",
+    backgroundColor: "#eef5ec",
     display: "flex",
     justifyContent: "center",
     alignItems: "flex-start",
@@ -460,7 +460,7 @@ const styles = {
   logo: { display: "flex", alignItems: "center", gap: 8 },
   logoIcon: { fontSize: 22 },
   logoText: { color: teal, fontSize: 22, fontWeight: "bold", fontStyle: "italic" },
-  headerTitle: { color: "#7ab", fontSize: 18 },
+  headerTitle: { color: teal, fontSize: 18 },
   divider: { height: 1, backgroundColor: "#e0e0e0" },
   body: { padding: "24px 40px 32px" },
   sectionTitle: { color: teal, fontSize: 18, fontWeight: "normal", marginBottom: 16, marginTop: 8 },
@@ -524,7 +524,7 @@ const styles = {
     display: "inline-flex",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#e8f5f2",
+    backgroundColor: "#eef5ec",
     border: `1px solid ${teal}`,
     borderRadius: 20,
     padding: "3px 10px",
