@@ -18,6 +18,7 @@ function DetalleReceta() {
   const [textoComentario, setTextoComentario] = useState("");
   const [enviandoComentario, setEnviandoComentario] = useState(false);
   const [errorSocial, setErrorSocial] = useState("");
+  const [procesandoLike, setProcesandoLike] = useState(false);
 
   const obtenerUsuarioSesion = () => {
     try {
@@ -77,35 +78,39 @@ function DetalleReceta() {
     cargarInteraccion();
   }, [id]);
 
-  const alternarMeGusta = async () => {
-    const usuario = obtenerUsuarioSesion();
-    setErrorSocial("");
+const alternarMeGusta = async () => {
+  if (procesandoLike) return;
 
-    if (!usuario?.nombre) {
-      setErrorSocial("Debes iniciar sesión para dar Me gusta.");
-      return;
-    }
+  const usuario = obtenerUsuarioSesion();
+  setErrorSocial("");
 
-    try {
-      const respuesta = await fetch(
-        `http://localhost:3000/recetas/${id}/likes`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ usuario: usuario.nombre })
-        }
-      );
-      const data = await respuesta.json();
+  if (!usuario?.nombre) {
+    setErrorSocial("Debes iniciar sesión para dar Me gusta.");
+    return;
+  }
 
-      if (!respuesta.ok) {
-        throw new Error(data.error || "Error al registrar el Me gusta.");
+  setProcesandoLike(true);
+  try {
+    const respuesta = await fetch(
+      `http://localhost:3000/recetas/${id}/likes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario: usuario.nombre })
       }
-      setLikes(data);
-    } catch (err) {
-      setErrorSocial(err.message);
-    }
-  };
+    );
+    const data = await respuesta.json();
 
+    if (!respuesta.ok) {
+      throw new Error(data.error || "Error al registrar el Me gusta.");
+    }
+    setLikes(data);
+  } catch (err) {
+    setErrorSocial(err.message);
+  } finally {
+    setProcesandoLike(false);
+  }
+};
   const enviarComentario = async () => {
     const usuario = obtenerUsuarioSesion();
     setErrorSocial("");
@@ -204,6 +209,7 @@ function DetalleReceta() {
           <button
             className={`detalle-megusta ${likes.meGusta ? "activo" : ""}`}
             onClick={alternarMeGusta}
+            disabled={procesandoLike}
           >
             {likes.meGusta ? "♥" : "♡"} Me gusta
           </button>

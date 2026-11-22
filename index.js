@@ -893,21 +893,23 @@ app.post('/recetas/:id/likes', async (req, res) => {
       return res.status(404).json({ error: 'Receta no encontrada.' });
     }
 
-    const existente = await pool.query(
-      'SELECT id FROM recetas_likes WHERE receta_id = $1 AND usuario_id = $2',
+    const insertado = await pool.query(
+      `INSERT INTO recetas_likes (receta_id, usuario_id)
+       VALUES ($1, $2)
+       ON CONFLICT (receta_id, usuario_id) DO NOTHING
+       RETURNING id`,
       [recetaId, usuarioId]
     );
 
     let meGusta;
-    if (existente.rows.length > 0) {
-      await pool.query('DELETE FROM recetas_likes WHERE id = $1', [existente.rows[0].id]);
-      meGusta = false;
+    if (insertado.rows.length > 0) {
+      meGusta = true;
     } else {
       await pool.query(
-        'INSERT INTO recetas_likes (receta_id, usuario_id) VALUES ($1, $2)',
+        'DELETE FROM recetas_likes WHERE receta_id = $1 AND usuario_id = $2',
         [recetaId, usuarioId]
       );
-      meGusta = true;
+      meGusta = false;
     }
 
     const total = await pool.query(
@@ -1090,13 +1092,28 @@ app.get("/publicaciones", async (req, res) => {
         r.proteinas AS receta_proteinas,
         r.carbohidratos AS receta_carbohidratos,
         r.grasas AS receta_grasas,
-        (SELECT COUNT(*)::int FROM publicaciones_likes pl
-          WHERE pl.publicacion_id = p.id) AS likes_total,
-        EXISTS (
-          SELECT 1 FROM publicaciones_likes pl
-          JOIN usuarios uu ON uu.id = pl.usuario_id
-          WHERE pl.publicacion_id = p.id AND uu.usuario = $1
-        ) AS me_gusta
+        CASE
+          WHEN p.receta_id IS NOT NULL THEN
+            (SELECT COUNT(*)::int FROM recetas_likes rl
+              WHERE rl.receta_id = p.receta_id)
+          ELSE
+            (SELECT COUNT(*)::int FROM publicaciones_likes pl
+              WHERE pl.publicacion_id = p.id)
+        END AS likes_total,
+        CASE
+          WHEN p.receta_id IS NOT NULL THEN
+            EXISTS (
+              SELECT 1 FROM recetas_likes rl
+              JOIN usuarios uu ON uu.id = rl.usuario_id
+              WHERE rl.receta_id = p.receta_id AND uu.usuario = $1
+            )
+          ELSE
+            EXISTS (
+              SELECT 1 FROM publicaciones_likes pl
+              JOIN usuarios uu ON uu.id = pl.usuario_id
+              WHERE pl.publicacion_id = p.id AND uu.usuario = $1
+            )
+        END AS me_gusta
       FROM publicaciones p
       JOIN usuarios u ON p.usuario_id = u.id
       LEFT JOIN recetas r ON p.receta_id = r.id
@@ -1132,31 +1149,43 @@ app.post('/publicaciones/:id/likes', async (req, res) => {
     }
     const usuarioId = usuarioResult.rows[0].id;
 
-    const pub = await pool.query('SELECT id FROM publicaciones WHERE id = $1', [publicacionId]);
+    const pub = await pool.query(
+      'SELECT id, receta_id FROM publicaciones WHERE id = $1',
+      [publicacionId]
+    );
     if (pub.rows.length === 0) {
       return res.status(404).json({ error: 'Publicación no encontrada.' });
     }
 
-    const existente = await pool.query(
-      'SELECT id FROM publicaciones_likes WHERE publicacion_id = $1 AND usuario_id = $2',
-      [publicacionId, usuarioId]
+    // Si la publicación comparte una receta, el Me gusta es el de la receta
+    // (el mismo que se ve en el detalle). Si no, es el de la publicación.
+    const recetaId = pub.rows[0].receta_id;
+    const tabla = recetaId ? 'recetas_likes' : 'publicaciones_likes';
+    const columna = recetaId ? 'receta_id' : 'publicacion_id';
+    const objetivoId = recetaId || publicacionId;
+
+    const insertado = await pool.query(
+      `INSERT INTO ${tabla} (${columna}, usuario_id)
+       VALUES ($1, $2)
+       ON CONFLICT (${columna}, usuario_id) DO NOTHING
+       RETURNING id`,
+      [objetivoId, usuarioId]
     );
 
     let meGusta;
-    if (existente.rows.length > 0) {
-      await pool.query('DELETE FROM publicaciones_likes WHERE id = $1', [existente.rows[0].id]);
-      meGusta = false;
+    if (insertado.rows.length > 0) {
+      meGusta = true;
     } else {
       await pool.query(
-        'INSERT INTO publicaciones_likes (publicacion_id, usuario_id) VALUES ($1, $2)',
-        [publicacionId, usuarioId]
+        `DELETE FROM ${tabla} WHERE ${columna} = $1 AND usuario_id = $2`,
+        [objetivoId, usuarioId]
       );
-      meGusta = true;
+      meGusta = false;
     }
 
     const total = await pool.query(
-      'SELECT COUNT(*)::int AS total FROM publicaciones_likes WHERE publicacion_id = $1',
-      [publicacionId]
+      `SELECT COUNT(*)::int AS total FROM ${tabla} WHERE ${columna} = $1`,
+      [objetivoId]
     );
 
     res.json({ total: total.rows[0].total, meGusta });

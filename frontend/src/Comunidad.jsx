@@ -92,7 +92,7 @@ export default function Comunidad() {
       if (respuesta.ok) {
         setPublicaciones(prev =>
           prev.map(p =>
-            p.id === pub.id
+              p.id === pub.id || (pub.receta_id && p.receta_id === pub.receta_id)
               ? { ...p, likes_total: data.total, me_gusta: data.meGusta }
               : p
           )
