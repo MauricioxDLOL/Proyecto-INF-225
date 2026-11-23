@@ -227,6 +227,13 @@ await pool.query(`
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS intolerancias TEXT`);
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS alimentos_restringidos TEXT`);
     await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS contrasena TEXT`);
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS rol TEXT DEFAULT 'alumno'`);
+    // Cuenta de prueba Administrador (usuario: admin / contraseña: admin123)
+    await pool.query(`
+      INSERT INTO usuarios (usuario, correo, contrasena, rol)
+      VALUES ('admin', 'admin@usm.cl', 'admin123', 'admin')
+      ON CONFLICT (usuario) DO UPDATE SET rol = 'admin'
+    `);
     await inicializarPerfil();
 
     console.log('Tablas inicializadas correctamente');
@@ -336,7 +343,14 @@ app.post('/login', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM usuarios WHERE usuario = $1 AND contrasena = $2', [usuario, contrasena]);
     if (result.rows.length === 0) return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
-    res.json({ mensaje: 'Login exitoso', usuario: { id: result.rows[0].id, nombre: result.rows[0].usuario } });
+    res.json({ 
+      mensaje: 'Login exitoso', 
+      usuario: { 
+        id: result.rows[0].id, 
+        nombre: result.rows[0].usuario,
+        rol: result.rows[0].rol || 'alumno'
+      } 
+    });
   } catch (err) {
     res.status(500).send('Error al iniciar sesión');
   }
@@ -957,8 +971,12 @@ app.post('/recetas/:id/comentarios', async (req, res) => {
   if (!usuario) {
     return res.status(401).json({ error: 'Debes iniciar sesión para comentar.' });
   }
-  if (typeof texto !== 'string' || !texto.trim() || texto.trim().length > 1000) {
-    return res.status(400).json({ error: 'Escribe un comentario de máximo 1000 caracteres.' });
+
+  if (typeof texto !== 'string' || !texto.trim()) {
+    return res.status(400).json({ error: 'El comentario no puede estar vacío ni contener solo espacios.' });
+  }
+  if (texto.length > 300) {
+    return res.status(400).json({ error: 'El comentario supera el límite máximo de 300 caracteres.' });
   }
 
   try {
@@ -983,6 +1001,44 @@ app.post('/recetas/:id/comentarios', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al agregar el comentario.' });
+  }
+});
+
+app.delete('/recetas/:id/comentarios/:comentarioId', async (req, res) => {
+  const recetaId = Number(req.params.id);
+  const comentarioId = Number(req.params.comentarioId);
+  const { usuario } = req.body;
+
+  if (!Number.isInteger(recetaId) || recetaId <= 0 || !Number.isInteger(comentarioId) || comentarioId <= 0) {
+    return res.status(400).json({ error: 'ID inválido.' });
+  }
+  if (!usuario) {
+    return res.status(401).json({ error: 'Debes iniciar sesión.' });
+  }
+
+  try {
+    const userRes = await pool.query('SELECT id, rol FROM usuarios WHERE usuario = $1', [usuario]);
+    if (userRes.rows.length === 0) {
+      return res.status(401).json({ error: 'Usuario no encontrado.' });
+    }
+
+    if (userRes.rows[0].rol !== 'admin') {
+      return res.status(403).json({ error: 'Solo un Administrador puede eliminar comentarios.' });
+    }
+
+    const eliminado = await pool.query(
+      'DELETE FROM recetas_comentarios WHERE id = $1 AND receta_id = $2 RETURNING id',
+      [comentarioId, recetaId]
+    );
+
+    if (eliminado.rows.length === 0) {
+      return res.status(404).json({ error: 'Comentario no encontrado.' });
+    }
+
+    res.json({ mensaje: 'Comentario eliminado correctamente.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error al eliminar el comentario.' });
   }
 });
 // ===== Fin RS004 =====

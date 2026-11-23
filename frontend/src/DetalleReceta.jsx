@@ -28,6 +28,9 @@ function DetalleReceta() {
     }
   };
 
+  const usuarioActual = obtenerUsuarioSesion();
+  const esAdmin = usuarioActual?.rol === "admin";
+
   useEffect(() => {
     const obtenerReceta = async () => {
       setCargando(true);
@@ -111,7 +114,7 @@ const alternarMeGusta = async () => {
     setProcesandoLike(false);
   }
 };
-  const enviarComentario = async () => {
+const enviarComentario = async () => {
     const usuario = obtenerUsuarioSesion();
     setErrorSocial("");
 
@@ -119,8 +122,14 @@ const alternarMeGusta = async () => {
       setErrorSocial("Debes iniciar sesión para comentar.");
       return;
     }
+
     if (!textoComentario.trim()) {
-      setErrorSocial("Escribe un comentario antes de enviarlo.");
+      setErrorSocial("El comentario no puede estar vacío ni contener solo espacios.");
+      return;
+    }
+
+    if (textoComentario.length > 300) {
+      setErrorSocial(`El comentario supera el máximo de 300 caracteres (${textoComentario.length}/300).`);
       return;
     }
 
@@ -133,7 +142,7 @@ const alternarMeGusta = async () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             usuario: usuario.nombre,
-            texto: textoComentario
+            texto: textoComentario.trim()
           })
         }
       );
@@ -149,6 +158,36 @@ const alternarMeGusta = async () => {
       setErrorSocial(err.message);
     } finally {
       setEnviandoComentario(false);
+    }
+  };
+
+  const eliminarComentario = async (comentarioId) => {
+    const usuario = obtenerUsuarioSesion();
+    if (!usuario?.nombre || usuario.rol !== "admin") return;
+
+    if (!window.confirm("¿Estás seguro de que deseas eliminar este comentario?")) {
+      return;
+    }
+
+    setErrorSocial("");
+    try {
+      const respuesta = await fetch(
+        `http://localhost:3000/recetas/${id}/comentarios/${comentarioId}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ usuario: usuario.nombre })
+        }
+      );
+      const data = await respuesta.json();
+
+      if (!respuesta.ok) {
+        throw new Error(data.error || "Error al eliminar el comentario.");
+      }
+
+      setComentarios(prev => prev.filter(c => c.id !== comentarioId));
+    } catch (err) {
+      setErrorSocial(err.message);
     }
   };
 
@@ -299,18 +338,22 @@ const alternarMeGusta = async () => {
           <div className="detalle-comentar">
             <textarea
               className="detalle-comentar-texto"
-              placeholder="Escribe un comentario..."
+              placeholder="Escribe un comentario (máximo 300 caracteres)..."
               value={textoComentario}
-              maxLength={1000}
               onChange={(e) => setTextoComentario(e.target.value)}
             />
-            <button
-              className="detalle-comentar-boton"
-              onClick={enviarComentario}
-              disabled={enviandoComentario}
-            >
-              {enviandoComentario ? "Enviando..." : "Comentar"}
-            </button>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginTop: "6px" }}>
+              <span style={{ fontSize: "12px", color: textoComentario.length > 300 ? "#d93025" : "#666" }}>
+                {textoComentario.length}/300 caracteres
+              </span>
+              <button
+                className="detalle-comentar-boton"
+                onClick={enviarComentario}
+                disabled={enviandoComentario}
+              >
+                {enviandoComentario ? "Enviando..." : "Comentar"}
+              </button>
+            </div>
           </div>
 
           {errorSocial && <p className="detalle-social-error">{errorSocial}</p>}
@@ -323,7 +366,26 @@ const alternarMeGusta = async () => {
                 <div className="detalle-comentario" key={c.id}>
                   <div className="detalle-comentario-header">
                     <strong>{c.autor}</strong>
-                    <span>{formatoFecha(c.fecha)}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <span>{formatoFecha(c.fecha)}</span>
+                      {esAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => eliminarComentario(c.id)}
+                          style={{
+                            backgroundColor: "#dc3545",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: "4px",
+                            padding: "3px 8px",
+                            fontSize: "12px",
+                            cursor: "pointer"
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <p>{c.texto}</p>
                 </div>
