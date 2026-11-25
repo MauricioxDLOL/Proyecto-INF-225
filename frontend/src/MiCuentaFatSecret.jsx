@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -55,7 +56,7 @@ export default function MiCuentaFatSecret() {
       return;
     }
     try {
-      const respuesta = await fetch("http://localhost:3000/registro", {
+      const respuesta = await fetch(`${API_URL}/registro`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),

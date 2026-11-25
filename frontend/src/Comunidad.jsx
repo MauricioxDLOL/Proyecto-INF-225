@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import { useState, useEffect } from "react";
 import "./Comunidad.css";
 import { Link } from "react-router-dom";
@@ -65,7 +66,7 @@ export default function Comunidad() {
       const query = usuario?.nombre
         ? `?usuario=${encodeURIComponent(usuario.nombre)}`
         : "";
-      const respuesta = await fetch(`http://localhost:3000/publicaciones${query}`);
+      const respuesta = await fetch(`${API_URL}/publicaciones${query}`);
       const data = await respuesta.json();
       if (respuesta.ok) setPublicaciones(data);
     } catch {
@@ -81,7 +82,7 @@ export default function Comunidad() {
     }
     try {
       const respuesta = await fetch(
-        `http://localhost:3000/publicaciones/${pub.id}/likes`,
+        `${API_URL}/publicaciones/${pub.id}/likes`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -110,7 +111,7 @@ export default function Comunidad() {
     setError("");
     setPublicando(true);
     try {
-      const respuesta = await fetch("http://localhost:3000/publicaciones", {
+      const respuesta = await fetch(`${API_URL}/publicaciones`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ titulo, texto, usuario: usuario.nombre, imagen }),
@@ -147,7 +148,7 @@ export default function Comunidad() {
 
   const guardarEdicion = async (id) => {
     try {
-      await fetch(`http://localhost:3000/publicaciones/${id}`, {
+      await fetch(`${API_URL}/publicaciones/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -166,7 +167,7 @@ export default function Comunidad() {
   const eliminarPublicacion = async (id) => {
     if (!window.confirm("¿Estás seguro de que quieres eliminar esta publicación?")) return;
     try {
-      await fetch(`http://localhost:3000/publicaciones/${id}`, {
+      await fetch(`${API_URL}/publicaciones/${id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ usuario: usuario.nombre }),
@@ -182,7 +183,7 @@ export default function Comunidad() {
     setTextoComentario("");
     setCargandoComentarios(true);
     try {
-      const respuesta = await fetch(`http://localhost:3000/comentarios/${publicacion.id}`);
+      const respuesta = await fetch(`${API_URL}/comentarios/${publicacion.id}`);
       const data = await respuesta.json();
       if (respuesta.ok) setComentarios(data);
     } catch {
@@ -203,7 +204,7 @@ export default function Comunidad() {
     if (!textoComentario.trim()) return;
     setEnviandoComentario(true);
     try {
-      const respuesta = await fetch("http://localhost:3000/comentarios", {
+      const respuesta = await fetch(`${API_URL}/comentarios`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -214,7 +215,7 @@ export default function Comunidad() {
       });
       if (respuesta.ok) {
         setTextoComentario("");
-        const resp2 = await fetch(`http://localhost:3000/comentarios/${publicacionSeleccionada.id}`);
+        const resp2 = await fetch(`${API_URL}/comentarios/${publicacionSeleccionada.id}`);
         const data2 = await resp2.json();
         if (resp2.ok) setComentarios(data2);
       }
@@ -228,12 +229,12 @@ export default function Comunidad() {
   const eliminarComentario = async (id) => {
   if (!window.confirm("¿Eliminar este comentario?")) return;
   try {
-    await fetch(`http://localhost:3000/comentarios/${id}`, {
+    await fetch(`${API_URL}/comentarios/${id}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ usuario: usuario.nombre }),
     });
-    const resp = await fetch(`http://localhost:3000/comentarios/${publicacionSeleccionada.id}`);
+    const resp = await fetch(`${API_URL}/comentarios/${publicacionSeleccionada.id}`);
     const data = await resp.json();
     if (resp.ok) setComentarios(data);
   } catch {

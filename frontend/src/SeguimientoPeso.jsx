@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import { useEffect, useState } from "react";
 import "./SeguimientoPeso.css";
 import {
@@ -33,7 +34,7 @@ function SeguimientoPeso() {
     if (!usuarioNombre) return;
 
     try {
-      const res = await fetch(`http://localhost:3000/peso/${usuarioNombre}`);
+      const res = await fetch(`${API_URL}/peso/${usuarioNombre}`);
       const data = await res.json();
       setHistorial(data);
     } catch (err) {
@@ -61,7 +62,7 @@ function SeguimientoPeso() {
     }
 
     try {
-      const res = await fetch("http://localhost:3000/peso", {
+      const res = await fetch(`${API_URL}/peso`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -34,7 +35,7 @@ try {
     setResultado(null);
     setGuardado(false);
     try {
-      const respuesta = await fetch("http://localhost:3000/verificar-alimento", {
+      const respuesta = await fetch(`${API_URL}/verificar-alimento`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ usuario, alimento }),
@@ -58,7 +59,7 @@ try {
 
   const guardarAlimento = async (data) => {
     try {
-      await fetch("http://localhost:3000/guardar-alimento", {
+      await fetch(`${API_URL}/guardar-alimento`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

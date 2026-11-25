@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -18,7 +19,7 @@ export default function Login() {
     setError("");
     setCargando(true);
     try {
-      const respuesta = await fetch("http://localhost:3000/login", {
+      const respuesta = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ usuario, contrasena }),

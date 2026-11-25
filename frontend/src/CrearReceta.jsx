@@ -1,9 +1,10 @@
+import { API_URL } from "./config";
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./CrearReceta.css";
 
-const API = "http://localhost:3000";
+const API = API_URL;
 
 function CrearReceta() {
   const navigate = useNavigate();

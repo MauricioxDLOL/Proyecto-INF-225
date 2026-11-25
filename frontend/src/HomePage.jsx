@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import { useEffect, useState } from "react";
 import "./HomePage.css";
 
@@ -35,7 +36,7 @@ function HomePage() {
     async function cargarMetas() {
       if (!userIdParaFetch) return;
       try {
-        const res = await fetch(`http://localhost:3000/metas/${userIdParaFetch}`);
+        const res = await fetch(`${API_URL}/metas/${userIdParaFetch}`);
         if (!res.ok) return;
         const data = await res.json();
         setMetas(data);
@@ -50,7 +51,7 @@ function HomePage() {
     async function cargarUsuario() {
       if (!userIdParaFetch) return;
       try {
-        const res = await fetch(`http://localhost:3000/usuario/${userIdParaFetch}`);
+        const res = await fetch(`${API_URL}/usuario/${userIdParaFetch}`);
         if (!res.ok) return;
         const data = await res.json();
         setDatosUsuario(data);
@@ -66,7 +67,7 @@ function HomePage() {
     async function cargarResumenDiario() {
       if (!userIdParaFetch) return;
       try {
-        const res = await fetch(`http://localhost:3000/resumen-diario/${userIdParaFetch}`);
+        const res = await fetch(`${API_URL}/resumen-diario/${userIdParaFetch}`);
         if (!res.ok) return;
         const data = await res.json();
         setResumenDiario(data);
@@ -135,7 +136,7 @@ function HomePage() {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/api/actividades', {
+      const response = await fetch(`${API_URL}/api/actividades`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -158,7 +159,7 @@ function HomePage() {
       setIntensidad("baja");
 
    
-      const resumenRes = await fetch(`http://localhost:3000/resumen-diario/${usuario.id}`);
+      const resumenRes = await fetch(`${API_URL}/resumen-diario/${usuario.id}`);
       if (resumenRes.ok) {
         const nuevoResumen = await resumenRes.json();
         setResumenDiario(nuevoResumen);

@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Metas.css";
@@ -21,7 +22,7 @@ function Metas() {
 
         const usuarioObj = JSON.parse(storedUser);
 
-        const res = await fetch(`http://localhost:3000/metas/${usuarioObj.id}`);
+        const res = await fetch(`${API_URL}/metas/${usuarioObj.id}`);
         if (!res.ok) return;
 
         const data = await res.json();
@@ -51,7 +52,7 @@ function Metas() {
 
       const usuarioObj = JSON.parse(storedUser);
 
-      const respuesta = await fetch("http://localhost:3000/metas", {
+      const respuesta = await fetch(`${API_URL}/metas`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

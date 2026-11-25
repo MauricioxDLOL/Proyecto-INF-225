@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import { useState } from "react";
 import "./BuscarAlimento.css";
 import BuscarRecetas from "./BuscarRecetas";
@@ -19,7 +20,7 @@ function BuscarAlimento() {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3000/buscar-alimentos?query=${busqueda}`
+        `${API_URL}/buscar-alimentos?query=${busqueda}`
       );
       const data = await respuesta.json();
       console.log(data);
@@ -40,7 +41,7 @@ function BuscarAlimento() {
 
     try {
       const respuesta = await fetch(
-        `http://localhost:3000/informacion-alimento?id=${idAlimento}&usuario=${usuarioSesion.nombre}`
+        `${API_URL}/informacion-alimento?id=${idAlimento}&usuario=${usuarioSesion.nombre}`
       );
       const data = await respuesta.json();
       setDetalleAlimento(data);
@@ -80,7 +81,7 @@ function BuscarAlimento() {
 
     try {
       const respuesta = await fetch(
-        "http://localhost:3000/agregar-alimento-diario",
+        `${API_URL}/agregar-alimento-diario`,
         {
           method: "POST",
           headers: {

@@ -1,8 +1,9 @@
+import { API_URL } from "./config";
 // frontend/src/PerfilPublico.jsx
 import { useEffect, useState } from "react";
 import "./PerfilPublico.css";
 
-const API = "http://localhost:3000";
+const API = API_URL;
 
 const LIMITES = { nombre_publico: 50, biografia: 300, ciudad: 60, intereses: 100 };
 const RE_NOMBRE = /^[\p{L}\p{N} ._-]+$/u;

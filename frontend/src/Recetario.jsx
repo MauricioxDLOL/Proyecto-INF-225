@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Recetario.css";
@@ -29,7 +30,7 @@ function Recetario({ soloMias = false }) {
       if (caloriasMax) params.append("calorias_max", caloriasMax);
 
       const respuesta = await fetch(
-        `http://localhost:3000/recetas?${params.toString()}`
+        `${API_URL}/recetas?${params.toString()}`
       );
 
       if (!respuesta.ok) {
@@ -52,7 +53,7 @@ function Recetario({ soloMias = false }) {
     setCargando(true);
     setError("");
     try {
-      const respuesta = await fetch("http://localhost:3000/recetas");
+      const respuesta = await fetch(`${API_URL}/recetas`);
       if (!respuesta.ok) throw new Error("Error obteniendo recetas");
       const data = await respuesta.json();
       setRecetas(data);
@@ -90,7 +91,7 @@ function Recetario({ soloMias = false }) {
     setCompartiendoId(receta.id);
 
     try {
-      const respuesta = await fetch("http://localhost:3000/compartir-receta", {
+      const respuesta = await fetch(`${API_URL}/compartir-receta`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

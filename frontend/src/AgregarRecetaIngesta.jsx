@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 
 import React, { useState } from "react";
 import "./AgregarRecetaIngesta.css";
@@ -47,7 +48,7 @@ function AgregarRecetaIngesta({ receta, onCerrar }) {
 
     try {
       const respuesta = await fetch(
-        "http://localhost:3000/agregar-receta-diario",
+        `${API_URL}/agregar-receta-diario`,
         {
           method: "POST",
           headers: {

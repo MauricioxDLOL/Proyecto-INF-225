@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import "./DetalleReceta.css";
@@ -38,7 +39,7 @@ function DetalleReceta() {
 
       try {
         const respuesta = await fetch(
-          `http://localhost:3000/recetas/${id}`
+          `${API_URL}/recetas/${id}`
         );
 
         const data = await respuesta.json();
@@ -67,8 +68,8 @@ function DetalleReceta() {
 
       try {
         const [respLikes, respComentarios] = await Promise.all([
-          fetch(`http://localhost:3000/recetas/${id}/likes${query}`),
-          fetch(`http://localhost:3000/recetas/${id}/comentarios`)
+          fetch(`${API_URL}/recetas/${id}/likes${query}`),
+          fetch(`${API_URL}/recetas/${id}/comentarios`)
         ]);
 
         if (respLikes.ok) setLikes(await respLikes.json());
@@ -95,7 +96,7 @@ const alternarMeGusta = async () => {
   setProcesandoLike(true);
   try {
     const respuesta = await fetch(
-      `http://localhost:3000/recetas/${id}/likes`,
+      `${API_URL}/recetas/${id}/likes`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,7 +137,7 @@ const enviarComentario = async () => {
     setEnviandoComentario(true);
     try {
       const respuesta = await fetch(
-        `http://localhost:3000/recetas/${id}/comentarios`,
+        `${API_URL}/recetas/${id}/comentarios`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -172,7 +173,7 @@ const enviarComentario = async () => {
     setErrorSocial("");
     try {
       const respuesta = await fetch(
-        `http://localhost:3000/recetas/${id}/comentarios/${comentarioId}`,
+        `${API_URL}/recetas/${id}/comentarios/${comentarioId}`,
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },

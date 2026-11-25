@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AgregarRecetaIngesta from "./AgregarRecetaIngesta";
@@ -25,7 +26,7 @@ function BuscarRecetas() {
       if (restriccion) params.append("restriccion", restriccion);
       if (caloriasMax) params.append("calorias_max", caloriasMax);
 
-      const respuesta = await fetch(`http://localhost:3000/recetas?${params.toString()}`);
+      const respuesta = await fetch(`${API_URL}/recetas?${params.toString()}`);
 
       if (!respuesta.ok) {
         throw new Error("Error al cargar recetas");

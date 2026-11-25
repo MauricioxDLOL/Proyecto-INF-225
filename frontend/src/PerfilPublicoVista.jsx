@@ -1,9 +1,10 @@
+import { API_URL } from "./config";
 // frontend/src/PerfilPublicoVista.jsx
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import "./PerfilPublico.css";
 
-const API = "http://localhost:3000";
+const API = API_URL;
 
 export default function PerfilPublicoVista() {
   const { usuario } = useParams();
