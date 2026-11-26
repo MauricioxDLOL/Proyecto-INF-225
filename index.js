@@ -245,13 +245,26 @@ await pool.query(`
 inicializarDB();
 
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://localhost:3001');
+  const origenesPermitidos = [
+    'http://localhost:3001',
+    'https://fastsecret-frontend.onrender.com'
+  ];
+
+  const origen = req.headers.origin;
+
+  res.vary('Origin');
+
+  if (origenesPermitidos.includes(origen)) {
+    res.header('Access-Control-Allow-Origin', origen);
+  }
+
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, PUT');
 
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
+
   next();
 });
 
